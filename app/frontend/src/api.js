@@ -47,6 +47,13 @@ export const api = {
   // 성과
   getPerformance: (p)      => request('GET', '/performance' + toQS(p)),
   getPersonPerf:  (id, p)  => request('GET', `/performance/${id}` + toQS(p)),
+
+  // 거래처
+  getClients:    (p)     => request('GET',    '/clients' + toQS(p)),
+  getClient:     (id)    => request('GET',    `/clients/${id}`),
+  createClient:  (body)  => request('POST',   '/clients', body),
+  updateClient:  (id, b) => request('PUT',    `/clients/${id}`, b),
+  deleteClient:  (id)    => request('DELETE', `/clients/${id}`),
 };
 
 function toQS(params) {

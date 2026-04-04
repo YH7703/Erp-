@@ -22,6 +22,7 @@ app.use('/api/sales-contracts',    require('./routes/salesContracts'));
 app.use('/api/purchase-contracts', require('./routes/purchaseContracts'));
 app.use('/api/salespeople',        require('./routes/salespeople'));
 app.use('/api/performance',        require('./routes/performance'));
+app.use('/api/clients',            require('./routes/clients'));
 
 app.use((err, req, res, next) => {
   console.error(err);

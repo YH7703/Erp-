@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, TrendingDown, Trophy, Users, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, TrendingDown, Trophy, Users, Building2, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import SalesContracts from './pages/SalesContracts';
 import PurchaseContracts from './pages/PurchaseContracts';
 import Performance from './pages/Performance';
 import Salespeople from './pages/Salespeople';
+import Clients from './pages/Clients';
 import { ToastContainer } from './components/Toast';
 import { ConfirmDialogContainer } from './components/ConfirmDialog';
 import { AlertModalContainer } from './components/AlertModal';
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { to: '/purchase',    label: '매입계약',      icon: TrendingDown },
   { to: '/performance', label: '영업 성과',    icon: Trophy },
   { to: '/salespeople', label: '영업사원 관리', icon: Users },
+  { to: '/clients',     label: '거래처 관리',   icon: Building2 },
 ];
 
 export default function App() {
@@ -89,6 +91,7 @@ export default function App() {
                 <Route path="/purchase"     element={<PurchaseContracts />} />
                 <Route path="/performance"  element={<Performance />} />
                 <Route path="/salespeople"  element={<Salespeople />} />
+                <Route path="/clients"     element={<Clients />} />
               </Routes>
             </div>
           </main>
