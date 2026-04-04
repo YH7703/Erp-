@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { requirePermission } = require('../middleware/rbac');
+// const { requirePermission } = require('../middleware/rbac'); // 인증 비활성화
 
 // 목록 조회
 router.get('/', async (req, res) => {
@@ -52,7 +52,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // 등록
-router.post('/', requirePermission('create'), async (req, res) => {
+router.post('/', async (req, res) => {
   const { contract_no, contract_name, vendor_id, vendor_name, worker_name, monthly_rate, months, currency, original_monthly_rate, start_date, end_date, status, sales_contract_id, notes } = req.body;
   const amount = Number(monthly_rate) * Number(months);
   try {
@@ -71,7 +71,7 @@ router.post('/', requirePermission('create'), async (req, res) => {
 });
 
 // 수정
-router.put('/:id', requirePermission('update'), async (req, res) => {
+router.put('/:id', async (req, res) => {
   const { contract_no, contract_name, vendor_id, vendor_name, worker_name, monthly_rate, months, currency, original_monthly_rate, start_date, end_date, status, sales_contract_id, notes } = req.body;
   const amount = Number(monthly_rate) * Number(months);
   try {
@@ -92,7 +92,7 @@ router.put('/:id', requirePermission('update'), async (req, res) => {
 });
 
 // 삭제
-router.delete('/:id', requirePermission('delete'), async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const [before] = await db.query('SELECT * FROM purchase_contract WHERE id = ?', [req.params.id]);
     await db.query('DELETE FROM purchase_contract WHERE id = ?', [req.params.id]);

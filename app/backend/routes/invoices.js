@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { requirePermission } = require('../middleware/rbac');
+// const { requirePermission } = require('../middleware/rbac'); // 인증 비활성화
 
 // 목록 조회
 router.get('/', async (req, res) => {
@@ -55,7 +55,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // 등록
-router.post('/', requirePermission('create'), async (req, res) => {
+router.post('/', async (req, res) => {
   const { invoice_no, sales_contract_id, client_id, amount, currency, original_amount, issue_date, due_date, status, notes } = req.body;
   try {
     const [result] = await db.query(
@@ -73,7 +73,7 @@ router.post('/', requirePermission('create'), async (req, res) => {
 });
 
 // 수정
-router.put('/:id', requirePermission('update'), async (req, res) => {
+router.put('/:id', async (req, res) => {
   const { invoice_no, sales_contract_id, client_id, amount, currency, original_amount, issue_date, due_date, status, paid_amount, paid_date, notes } = req.body;
   try {
     const [before] = await db.query('SELECT * FROM invoice WHERE id = ?', [req.params.id]);
@@ -95,7 +95,7 @@ router.put('/:id', requirePermission('update'), async (req, res) => {
 });
 
 // 삭제
-router.delete('/:id', requirePermission('delete'), async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const [before] = await db.query('SELECT * FROM invoice WHERE id = ?', [req.params.id]);
     if (!before.length) return res.status(404).json({ error: '인보이스를 찾을 수 없습니다' });
@@ -108,7 +108,7 @@ router.delete('/:id', requirePermission('delete'), async (req, res) => {
 });
 
 // 수금 처리
-router.post('/:id/pay', requirePermission('update'), async (req, res) => {
+router.post('/:id/pay', async (req, res) => {
   const { paid_amount, paid_date } = req.body;
   if (!paid_amount || !paid_date) {
     return res.status(400).json({ error: '수금액과 수금일을 입력해주세요' });

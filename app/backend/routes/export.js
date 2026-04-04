@@ -4,7 +4,7 @@ const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const fs = require('fs');
 const db = require('../db');
-const { requirePermission } = require('../middleware/rbac');
+// const { requirePermission } = require('../middleware/rbac'); // 인증 비활성화
 
 // Helper: format date value from MySQL
 function fmtDate(v) {
@@ -14,7 +14,7 @@ function fmtDate(v) {
 }
 
 // ── Excel: Sales Contracts ──────────────────────────────────────────
-router.get('/sales-contracts/excel', requirePermission('export'), async (req, res) => {
+router.get('/sales-contracts/excel', async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT sc.contract_no, sc.contract_name, sc.client_name, sc.amount,
@@ -62,7 +62,7 @@ router.get('/sales-contracts/excel', requirePermission('export'), async (req, re
 });
 
 // ── Excel: Purchase Contracts ───────────────────────────────────────
-router.get('/purchase-contracts/excel', requirePermission('export'), async (req, res) => {
+router.get('/purchase-contracts/excel', async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT pc.contract_no, pc.contract_name, pc.vendor_name, pc.worker_name,
@@ -111,7 +111,7 @@ router.get('/purchase-contracts/excel', requirePermission('export'), async (req,
 });
 
 // ── Excel: Quotations ───────────────────────────────────────────────
-router.get('/quotations/excel', requirePermission('export'), async (req, res) => {
+router.get('/quotations/excel', async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT q.quotation_no, q.title, c.name AS client_name,
@@ -155,7 +155,7 @@ router.get('/quotations/excel', requirePermission('export'), async (req, res) =>
 });
 
 // ── Excel: Invoices ─────────────────────────────────────────────────
-router.get('/invoices/excel', requirePermission('export'), async (req, res) => {
+router.get('/invoices/excel', async (req, res) => {
   try {
     const [rows] = await db.query(`
       SELECT i.invoice_no, sc.contract_name AS sales_contract_name,
@@ -284,7 +284,7 @@ const typeMap = {
   },
 };
 
-router.get('/:type/pdf', requirePermission('export'), async (req, res) => {
+router.get('/:type/pdf', async (req, res) => {
   const cfg = typeMap[req.params.type];
   if (!cfg) return res.status(400).json({ error: '지원하지 않는 유형입니다' });
 

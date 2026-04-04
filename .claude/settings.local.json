@@ -64,7 +64,18 @@
       "Bash(export PATH=\"$PATH:/c/Program Files/nodejs:/c/Users/qwert/AppData/Roaming/npm\")",
       "Bash(git restore:*)",
       "Bash(node -c app/backend/routes/invoices.js)",
-      "Bash(node -c \"C:/Users/qwert/erp/app/backend/routes/invoices.js\")"
+      "Bash(node -c \"C:/Users/qwert/erp/app/backend/routes/invoices.js\")",
+      "Bash(where.exe node:*)",
+      "Bash(git reset:*)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/nodejs\")",
+      "Bash(tasklist //FI \"PID eq 19888\")",
+      "Bash(taskkill //PID 19888 //F)",
+      "Bash(mysql -h 34.22.109.120 -u llmadmin -p'Test12341!' llmtest)",
+      "Read(//c/Program Files/MySQL/**)",
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Read(//c/xampp/mysql/bin/**)",
+      "Bash($MYSQL:*)",
+      "Bash(taskkill //F //IM node.exe)"
     ]
   }
 }

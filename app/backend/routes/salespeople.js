@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { requirePermission } = require('../middleware/rbac');
+// const { requirePermission } = require('../middleware/rbac'); // 인증 비활성화
 
 router.get('/', async (req, res) => {
   try {
@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/', requirePermission('create'), async (req, res) => {
+router.post('/', async (req, res) => {
   const { name, email, department } = req.body;
   try {
     const [r] = await db.query(
@@ -26,7 +26,7 @@ router.post('/', requirePermission('create'), async (req, res) => {
   }
 });
 
-router.put('/:id', requirePermission('update'), async (req, res) => {
+router.put('/:id', async (req, res) => {
   const { name, email, department } = req.body;
   try {
     const [before] = await db.query('SELECT * FROM salesperson WHERE id = ?', [req.params.id]);
@@ -41,7 +41,7 @@ router.put('/:id', requirePermission('update'), async (req, res) => {
   }
 });
 
-router.delete('/:id', requirePermission('delete'), async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const [[{ cnt }]] = await db.query(
       'SELECT COUNT(*) AS cnt FROM sales_contract WHERE salesperson_id=?', [req.params.id]

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { requirePermission } = require('../middleware/rbac');
+// const { requirePermission } = require('../middleware/rbac'); // 인증 비활성화
 
 // 목록 조회
 router.get('/', async (req, res) => {
@@ -60,7 +60,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // 등록
-router.post('/', requirePermission('create'), async (req, res) => {
+router.post('/', async (req, res) => {
   const { quotation_no, title, client_id, salesperson_id, status, valid_until, currency, notes, items } = req.body;
   try {
     const amount = (items || []).reduce((sum, it) => sum + (Number(it.quantity) || 0) * (Number(it.unit_price) || 0), 0);
@@ -93,7 +93,7 @@ router.post('/', requirePermission('create'), async (req, res) => {
 });
 
 // 수정
-router.put('/:id', requirePermission('update'), async (req, res) => {
+router.put('/:id', async (req, res) => {
   const { quotation_no, title, client_id, salesperson_id, status, valid_until, currency, notes, items } = req.body;
   try {
     const [before] = await db.query('SELECT * FROM quotation WHERE id = ?', [req.params.id]);
@@ -131,7 +131,7 @@ router.put('/:id', requirePermission('update'), async (req, res) => {
 });
 
 // 삭제
-router.delete('/:id', requirePermission('delete'), async (req, res) => {
+router.delete('/:id', async (req, res) => {
   try {
     const [before] = await db.query('SELECT * FROM quotation WHERE id = ?', [req.params.id]);
     if (!before.length) return res.status(404).json({ error: '견적서를 찾을 수 없습니다' });
@@ -146,7 +146,7 @@ router.delete('/:id', requirePermission('delete'), async (req, res) => {
 });
 
 // 계약 전환
-router.post('/:id/convert', requirePermission('create'), async (req, res) => {
+router.post('/:id/convert', async (req, res) => {
   const { contract_no, start_date, end_date, project_type } = req.body;
   try {
     const [[quotation]] = await db.query(`

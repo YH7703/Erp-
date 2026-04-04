@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { requirePermission } = require('../middleware/rbac');
+// const { requirePermission } = require('../middleware/rbac'); // 인증 비활성화
 
 // 거래처 목록 (필터: type, search)
 router.get('/', async (req, res, next) => {
@@ -53,7 +53,7 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // 거래처 등록
-router.post('/', requirePermission('create'), async (req, res, next) => {
+router.post('/', async (req, res, next) => {
   try {
     const { name, business_no, ceo_name, address, phone, email, client_type, notes } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: '거래처명은 필수입니다.' });
@@ -72,7 +72,7 @@ router.post('/', requirePermission('create'), async (req, res, next) => {
 });
 
 // 거래처 수정
-router.put('/:id', requirePermission('update'), async (req, res, next) => {
+router.put('/:id', async (req, res, next) => {
   try {
     const { name, business_no, ceo_name, address, phone, email, client_type, notes } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: '거래처명은 필수입니다.' });
@@ -92,7 +92,7 @@ router.put('/:id', requirePermission('update'), async (req, res, next) => {
 });
 
 // 거래처 삭제 (연결된 계약이 있으면 거부)
-router.delete('/:id', requirePermission('delete'), async (req, res, next) => {
+router.delete('/:id', async (req, res, next) => {
   try {
     const [[{ sc }]] = await db.query(
       'SELECT COUNT(*) AS sc FROM sales_contract WHERE client_id = ?', [req.params.id]
