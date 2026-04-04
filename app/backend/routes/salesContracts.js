@@ -5,13 +5,21 @@ const { requirePermission } = require('../middleware/rbac');
 
 // 목록 조회
 router.get('/', async (req, res) => {
-  const { status, search, salesperson_id } = req.query;
+  const { status, search, salesperson_id, start_from, start_to, end_from, end_to, amount_min, amount_max, project_type, client_id } = req.query;
   try {
     const where = ['1=1'];
     const params = [];
     if (status && status !== 'all') { where.push('sc.status = ?'); params.push(status); }
     if (search)        { where.push('(sc.contract_name LIKE ? OR sc.client_name LIKE ? OR sc.contract_no LIKE ?)'); params.push(`%${search}%`, `%${search}%`, `%${search}%`); }
     if (salesperson_id){ where.push('sc.salesperson_id = ?'); params.push(salesperson_id); }
+    if (start_from) { where.push('sc.start_date >= ?'); params.push(start_from); }
+    if (start_to) { where.push('sc.start_date <= ?'); params.push(start_to); }
+    if (end_from) { where.push('sc.end_date >= ?'); params.push(end_from); }
+    if (end_to) { where.push('sc.end_date <= ?'); params.push(end_to); }
+    if (amount_min) { where.push('sc.amount >= ?'); params.push(parseFloat(amount_min)); }
+    if (amount_max) { where.push('sc.amount <= ?'); params.push(parseFloat(amount_max)); }
+    if (project_type) { where.push('sc.project_type = ?'); params.push(project_type); }
+    if (client_id) { where.push('sc.client_id = ?'); params.push(client_id); }
 
     const [rows] = await db.query(`
       SELECT sc.*, s.name AS salesperson_name,

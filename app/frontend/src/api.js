@@ -65,12 +65,42 @@ export const api = {
   getPerformance: (p)      => request('GET', '/performance' + toQS(p)),
   getPersonPerf:  (id, p)  => request('GET', `/performance/${id}` + toQS(p)),
 
+  // 견적서
+  getQuotations:      (p)     => request('GET',    '/quotations' + toQS(p)),
+  getQuotation:       (id)    => request('GET',    `/quotations/${id}`),
+  createQuotation:    (body)  => request('POST',   '/quotations', body),
+  updateQuotation:    (id, b) => request('PUT',    `/quotations/${id}`, b),
+  deleteQuotation:    (id)    => request('DELETE', `/quotations/${id}`),
+  convertQuotation:   (id, b) => request('POST',   `/quotations/${id}/convert`, b),
+
+  // 인보이스
+  getInvoices:    (p)     => request('GET',    '/invoices' + toQS(p)),
+  getInvoice:     (id)    => request('GET',    `/invoices/${id}`),
+  createInvoice:  (body)  => request('POST',   '/invoices', body),
+  updateInvoice:  (id, b) => request('PUT',    `/invoices/${id}`, b),
+  deleteInvoice:  (id)    => request('DELETE', `/invoices/${id}`),
+  payInvoice:     (id, b) => request('POST',   `/invoices/${id}/pay`, b),
+
   // 거래처
   getClients:    (p)     => request('GET',    '/clients' + toQS(p)),
   getClient:     (id)    => request('GET',    `/clients/${id}`),
   createClient:  (body)  => request('POST',   '/clients', body),
   updateClient:  (id, b) => request('PUT',    `/clients/${id}`, b),
   deleteClient:  (id)    => request('DELETE', `/clients/${id}`),
+
+  // 첨부파일
+  getAttachments: (entityType, entityId) => request('GET', `/attachments/${entityType}/${entityId}`),
+  uploadFile: (entityType, entityId, file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = localStorage.getItem('token');
+    return fetch(`${BASE}/attachments/${entityType}/${entityId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData
+    }).then(r => r.ok ? r.json() : r.json().then(b => { throw new Error(b.error || '업로드 실패'); }));
+  },
+  deleteAttachment: (id) => request('DELETE', `/attachments/${id}`),
 };
 
 function toQS(params) {

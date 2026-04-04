@@ -59,7 +59,12 @@
       "Bash(git commit:*)",
       "Bash(git config:*)",
       "Bash(git rm:*)",
-      "Bash(rm -rf app/.git)"
+      "Bash(rm -rf app/.git)",
+      "Bash(npm install:*)",
+      "Bash(export PATH=\"$PATH:/c/Program Files/nodejs:/c/Users/qwert/AppData/Roaming/npm\")",
+      "Bash(git restore:*)",
+      "Bash(node -c app/backend/routes/invoices.js)",
+      "Bash(node -c \"C:/Users/qwert/erp/app/backend/routes/invoices.js\")"
     ]
   }
 }

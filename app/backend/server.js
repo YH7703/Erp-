@@ -20,6 +20,9 @@ const { authenticate } = require('./middleware/auth');
 app.use(cors());
 app.use(express.json());
 
+const { auditMiddleware } = require('./middleware/audit');
+app.use(auditMiddleware);
+
 app.use('/api/auth',               require('./routes/auth'));
 app.use('/api/dashboard',          authenticate, require('./routes/dashboard'));
 app.use('/api/sales-contracts',    authenticate, require('./routes/salesContracts'));
@@ -27,6 +30,28 @@ app.use('/api/purchase-contracts', authenticate, require('./routes/purchaseContr
 app.use('/api/salespeople',        authenticate, require('./routes/salespeople'));
 app.use('/api/performance',        authenticate, require('./routes/performance'));
 app.use('/api/clients',            authenticate, require('./routes/clients'));
+app.use('/api/quotations',         authenticate, require('./routes/quotations'));
+app.use('/api/invoices',           authenticate, require('./routes/invoices'));
+app.use('/api/attachments',        authenticate, require('./routes/attachments'));
+
+// 감사 로그 조회 API
+const { requireRole } = require('./middleware/rbac');
+app.get('/api/audit-logs', authenticate, requireRole('admin'), async (req, res, next) => {
+  try {
+    const { entity_type, entity_id, user_id, start, end, limit = 100, offset = 0 } = req.query;
+    let sql = 'SELECT * FROM audit_log WHERE 1=1';
+    const params = [];
+    if (entity_type) { sql += ' AND entity_type = ?'; params.push(entity_type); }
+    if (entity_id) { sql += ' AND entity_id = ?'; params.push(entity_id); }
+    if (user_id) { sql += ' AND user_id = ?'; params.push(user_id); }
+    if (start) { sql += ' AND created_at >= ?'; params.push(start); }
+    if (end) { sql += ' AND created_at <= ?'; params.push(end); }
+    sql += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    params.push(parseInt(limit), parseInt(offset));
+    const [rows] = await db.query(sql, params);
+    res.json(rows);
+  } catch (err) { next(err); }
+});
 
 app.use((err, req, res, next) => {
   console.error(err);

@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, TrendingDown, Trophy, Users, Building2, PanelLeftClose, PanelLeftOpen, LogOut } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, TrendingDown, Trophy, Users, Building2, FileEdit, Receipt, PanelLeftClose, PanelLeftOpen, LogOut } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import SalesContracts from './pages/SalesContracts';
 import PurchaseContracts from './pages/PurchaseContracts';
 import Performance from './pages/Performance';
 import Salespeople from './pages/Salespeople';
 import Clients from './pages/Clients';
+import Quotations from './pages/Quotations';
+import Invoices from './pages/Invoices';
 import Login from './pages/Login';
 import { ToastContainer } from './components/Toast';
 import { ConfirmDialogContainer } from './components/ConfirmDialog';
@@ -23,6 +25,8 @@ const NAV_ITEMS = [
   { to: '/purchase',    label: '매입계약',      icon: TrendingDown },
   { to: '/performance', label: '영업 성과',    icon: Trophy },
   { to: '/salespeople', label: '영업사원 관리', icon: Users, roles: ['admin', 'manager'] },
+  { to: '/quotations',  label: '견적서',         icon: FileEdit, roles: ['admin', 'manager', 'sales'] },
+  { to: '/invoices',    label: '인보이스',       icon: Receipt, roles: ['admin', 'manager', 'finance'] },
   { to: '/clients',     label: '거래처 관리',   icon: Building2 },
 ];
 
@@ -141,6 +145,8 @@ function AppLayout() {
             <Route path="/purchase"     element={<PurchaseContracts />} />
             <Route path="/performance"  element={<Performance />} />
             <Route path="/salespeople"  element={<Salespeople />} />
+            <Route path="/quotations"  element={<Quotations />} />
+            <Route path="/invoices"    element={<Invoices />} />
             <Route path="/clients"     element={<Clients />} />
           </Routes>
         </div>
