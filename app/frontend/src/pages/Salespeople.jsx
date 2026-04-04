@@ -10,9 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { UserPlus, Edit2, Trash2, X, Search, Users, Mail, Building2, Loader2 } from 'lucide-react';
+import { UserPlus, Edit2, Trash2, X, Search, Users, Mail, Building2, Phone, Loader2 } from 'lucide-react';
 
-const EMPTY = { name: '', email: '', department: '' };
+const EMPTY = { name: '', email: '', phone: '', department: '' };
 
 export default function Salespeople() {
   const [list,   setList]   = useState([]);
@@ -40,7 +40,7 @@ export default function Salespeople() {
   useEffect(() => { load(); }, []);
 
   const openCreate = () => { setForm(EMPTY); setFormError(''); setModal({ mode: 'create' }); };
-  const openEdit   = (row) => { setForm({ name: row.name, email: row.email || '', department: row.department || '' }); setFormError(''); setModal({ mode: 'edit', id: row.id }); };
+  const openEdit   = (row) => { setForm({ name: row.name, email: row.email || '', phone: row.phone || '', department: row.department || '' }); setFormError(''); setModal({ mode: 'edit', id: row.id }); };
 
   const handleSave = async () => {
     if (!form.name.trim()) { setFormError('이름을 입력하세요.'); toastError('이름을 입력하세요.'); return; }
@@ -62,7 +62,7 @@ export default function Salespeople() {
   };
 
   const filtered = list.filter(p =>
-    p.name.includes(search) || (p.department || '').includes(search) || (p.email || '').includes(search)
+    p.name.includes(search) || (p.department || '').includes(search) || (p.email || '').includes(search) || (p.phone || '').includes(search)
   );
 
   // 팀별 그룹
@@ -118,6 +118,10 @@ export default function Salespeople() {
                     <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
                       <Mail className="h-3 w-3" />
                       {p.email || '이메일 없음'}
+                    </div>
+                    <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                      <Phone className="h-3 w-3" />
+                      {p.phone || '연락처 없음'}
                     </div>
                     <div className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
                       <Building2 className="h-3 w-3" />
@@ -175,6 +179,14 @@ export default function Salespeople() {
                     value={form.email}
                     onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
                     placeholder="hong@company.com"
+                  />
+                </Field>
+                <Field label="연락처">
+                  <Input
+                    type="tel"
+                    value={form.phone}
+                    onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                    placeholder="010-1234-5678"
                   />
                 </Field>
                 <Field label="부서">

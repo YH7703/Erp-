@@ -75,7 +75,8 @@
       "Read(//c/Program Files \\(x86\\)/**)",
       "Read(//c/xampp/mysql/bin/**)",
       "Bash($MYSQL:*)",
-      "Bash(taskkill //F //IM node.exe)"
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f'{len\\(d\\)}명'\\); [print\\(f' {r[\\\\\"name\\\\\"]} | {r.get\\(\\\\\"phone\\\\\",\\\\\"-\\\\\"\\)} | {r[\\\\\"department\\\\\"]}'\\) for r in d[:5]]\")"
     ]
   }
 }

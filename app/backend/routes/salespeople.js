@@ -13,11 +13,11 @@ router.get('/', async (req, res) => {
 });
 
 router.post('/', async (req, res) => {
-  const { name, email, department } = req.body;
+  const { name, email, phone, department } = req.body;
   try {
     const [r] = await db.query(
-      'INSERT INTO salesperson (name, email, department) VALUES (?,?,?)',
-      [name, email || null, department || null]
+      'INSERT INTO salesperson (name, email, phone, department) VALUES (?,?,?,?)',
+      [name, email || null, phone || null, department || null]
     );
     await req.audit('CREATE', 'salesperson', r.insertId, null, req.body);
     res.status(201).json({ id: r.insertId });
@@ -27,12 +27,12 @@ router.post('/', async (req, res) => {
 });
 
 router.put('/:id', async (req, res) => {
-  const { name, email, department } = req.body;
+  const { name, email, phone, department } = req.body;
   try {
     const [before] = await db.query('SELECT * FROM salesperson WHERE id = ?', [req.params.id]);
     await db.query(
-      'UPDATE salesperson SET name=?, email=?, department=? WHERE id=?',
-      [name, email || null, department || null, req.params.id]
+      'UPDATE salesperson SET name=?, email=?, phone=?, department=? WHERE id=?',
+      [name, email || null, phone || null, department || null, req.params.id]
     );
     await req.audit('UPDATE', 'salesperson', parseInt(req.params.id), before[0], req.body);
     res.json({ ok: true });
