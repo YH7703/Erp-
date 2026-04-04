@@ -31,7 +31,6 @@ app.use('/api/salespeople',        require('./routes/salespeople'));
 app.use('/api/performance',        require('./routes/performance'));
 app.use('/api/clients',            require('./routes/clients'));
 app.use('/api/quotations',         require('./routes/quotations'));
-app.use('/api/invoices',           require('./routes/invoices'));
 app.use('/api/attachments',        require('./routes/attachments'));
 app.use('/api/export',             require('./routes/export'));
 

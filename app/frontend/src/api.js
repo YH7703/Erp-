@@ -73,13 +73,6 @@ export const api = {
   deleteQuotation:    (id)    => request('DELETE', `/quotations/${id}`),
   convertQuotation:   (id, b) => request('POST',   `/quotations/${id}/convert`, b),
 
-  // 인보이스
-  getInvoices:    (p)     => request('GET',    '/invoices' + toQS(p)),
-  getInvoice:     (id)    => request('GET',    `/invoices/${id}`),
-  createInvoice:  (body)  => request('POST',   '/invoices', body),
-  updateInvoice:  (id, b) => request('PUT',    `/invoices/${id}`, b),
-  deleteInvoice:  (id)    => request('DELETE', `/invoices/${id}`),
-  payInvoice:     (id, b) => request('POST',   `/invoices/${id}/pay`, b),
 
   // 거래처
   getClients:    (p)     => request('GET',    '/clients' + toQS(p)),
