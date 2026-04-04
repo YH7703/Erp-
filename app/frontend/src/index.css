@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 96%;
+    --foreground: 215 25% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 215 25% 15%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 215 16% 35%;
+    --muted: 210 20% 96%;
+    --muted-foreground: 215 14% 45%;
+    --accent: 210 20% 94%;
+    --accent-foreground: 215 25% 15%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 20% 90%;
+    --input: 214 20% 90%;
+    --ring: 221 83% 53%;
+    --radius: 0.5rem;
+  }
+
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+
+  ::selection {
+    background: #bfdbfe;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/80 backdrop-blur-sm;
+  }
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+  }
+  .gradient-blue {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  }
+  .gradient-red {
+    background: linear-gradient(135deg, #f87171 0%, #dc2626 100%);
+  }
+  .gradient-green {
+    background: linear-gradient(135deg, #4ade80 0%, #16a34a 100%);
+  }
+  .gradient-violet {
+    background: linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%);
+  }
+  .gradient-sidebar {
+    background: linear-gradient(180deg, #1e3a5f 0%, #15294a 100%);
+  }
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+@keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+.animate-slideUp { animation: slideUp 0.3s ease-out; }
+.animate-fadeIn { animation: fadeIn 0.2s ease-out; }
