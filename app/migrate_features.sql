@@ -1,4 +1,6 @@
 -- SI 계약 관리 ERP - 기능 확장 마이그레이션
+SET NAMES utf8mb4;
+SET CHARACTER SET utf8mb4;
 USE llmtest;
 
 -- ============================================================
@@ -14,7 +16,7 @@ CREATE TABLE IF NOT EXISTS user (
   is_active TINYINT(1) DEFAULT 1,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+) DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================
 -- 2. 거래처 테이블 (A4: 거래처 마스터)
@@ -31,7 +33,7 @@ CREATE TABLE IF NOT EXISTS client (
   notes TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+) DEFAULT CHARSET=utf8mb4;
 
 -- 기존 계약의 client_name을 기반으로 거래처 시드 데이터
 INSERT INTO client (name, client_type) VALUES
@@ -46,23 +48,21 @@ INSERT INTO client (name, client_type) VALUES
 ('(주)유지보수전문', '협력사'),
 ('(주)IT인력뱅크', '협력사');
 
--- 매출계약에 client_id FK 추가
-ALTER TABLE sales_contract ADD COLUMN client_id INT AFTER client_name;
-ALTER TABLE sales_contract ADD FOREIGN KEY (client_id) REFERENCES client(id);
+-- 매출계약에 client_id 컬럼 추가 (에러 무시)
+SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='llmtest' AND TABLE_NAME='sales_contract' AND COLUMN_NAME='client_id');
+SET @sql = IF(@col_exists = 0, 'ALTER TABLE sales_contract ADD COLUMN client_id INT AFTER client_name', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- 기존 데이터 매핑
-UPDATE sales_contract sc
-  JOIN client c ON c.name = sc.client_name
-  SET sc.client_id = c.id;
+UPDATE sales_contract sc JOIN client c ON c.name = sc.client_name SET sc.client_id = c.id WHERE sc.client_id IS NULL;
 
--- 매입계약에 vendor_id FK 추가
-ALTER TABLE purchase_contract ADD COLUMN vendor_id INT AFTER vendor_name;
-ALTER TABLE purchase_contract ADD FOREIGN KEY (vendor_id) REFERENCES client(id);
+-- 매입계약에 vendor_id 컬럼 추가 (에러 무시)
+SET @col_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='llmtest' AND TABLE_NAME='purchase_contract' AND COLUMN_NAME='vendor_id');
+SET @sql = IF(@col_exists = 0, 'ALTER TABLE purchase_contract ADD COLUMN vendor_id INT AFTER vendor_name', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 -- 기존 데이터 매핑
-UPDATE purchase_contract pc
-  JOIN client c ON c.name = pc.vendor_name
-  SET pc.vendor_id = c.id;
+UPDATE purchase_contract pc JOIN client c ON c.name = pc.vendor_name SET pc.vendor_id = c.id WHERE pc.vendor_id IS NULL;
 
 -- ============================================================
 -- 3. 견적서 테이블 (A1: 견적서 관리)
@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS quotation (
   FOREIGN KEY (client_id) REFERENCES client(id),
   FOREIGN KEY (salesperson_id) REFERENCES salesperson(id),
   FOREIGN KEY (converted_contract_id) REFERENCES sales_contract(id)
-);
+) DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS quotation_item (
   id INT PRIMARY KEY AUTO_INCREMENT,
@@ -96,7 +96,7 @@ CREATE TABLE IF NOT EXISTS quotation_item (
   amount DECIMAL(15,2) NOT NULL,
   sort_order INT DEFAULT 0,
   FOREIGN KEY (quotation_id) REFERENCES quotation(id) ON DELETE CASCADE
-);
+) DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================
 -- 4. 인보이스 테이블 (A2: 청구/인보이스)
@@ -119,7 +119,7 @@ CREATE TABLE IF NOT EXISTS invoice (
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (sales_contract_id) REFERENCES sales_contract(id),
   FOREIGN KEY (client_id) REFERENCES client(id)
-);
+) DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================
 -- 5. 감사 로그 테이블 (B3: Audit Trail)
@@ -139,7 +139,7 @@ CREATE TABLE IF NOT EXISTS audit_log (
   INDEX idx_entity (entity_type, entity_id),
   INDEX idx_user (user_id),
   INDEX idx_created (created_at)
-);
+) DEFAULT CHARSET=utf8mb4;
 
 -- ============================================================
 -- 6. 첨부파일 테이블 (D1: 파일 첨부)
@@ -156,4 +156,4 @@ CREATE TABLE IF NOT EXISTS attachment (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (uploaded_by) REFERENCES user(id) ON DELETE SET NULL,
   INDEX idx_entity (entity_type, entity_id)
-);
+) DEFAULT CHARSET=utf8mb4;

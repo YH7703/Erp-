@@ -16,6 +16,19 @@ async function request(method, path, body) {
   } catch (e) {
     throw new Error('서버에 연결할 수 없습니다. 네트워크 상태 또는 서버 실행 여부를 확인해주세요.');
   }
+
+  // 응답이 JSON이 아닌 경우 (백엔드 미실행 시 Vite가 HTML 반환)
+  const contentType = res.headers.get('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    if (res.status === 401 || res.status === 403) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/login';
+      throw new Error('인증이 만료되었습니다');
+    }
+    throw new Error('서버 응답 오류: 백엔드 서버가 실행 중인지 확인해주세요.');
+  }
+
   if (res.status === 401 && !path.startsWith('/auth/login') && !path.startsWith('/auth/register')) {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
