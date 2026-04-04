@@ -3,13 +3,24 @@ const BASE = '/api';
 async function request(method, path, body) {
   let res;
   try {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = localStorage.getItem('token');
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
     res = await fetch(`${BASE}${path}`, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
   } catch (e) {
     throw new Error('서버에 연결할 수 없습니다. 네트워크 상태 또는 서버 실행 여부를 확인해주세요.');
+  }
+  if (res.status === 401 && !path.startsWith('/auth/login') && !path.startsWith('/auth/register')) {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
+    throw new Error('인증이 만료되었습니다');
   }
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || '요청 실패');
@@ -17,6 +28,12 @@ async function request(method, path, body) {
 }
 
 export const api = {
+  // Auth
+  login:          (b) => request('POST', '/auth/login', b),
+  register:       (b) => request('POST', '/auth/register', b),
+  getMe:          ()  => request('GET',  '/auth/me'),
+  changePassword: (b) => request('PUT',  '/auth/password', b),
+
   // Dashboard
   getStats:    ()  => request('GET', '/dashboard/stats'),
   getRoi:      ()  => request('GET', '/dashboard/roi'),

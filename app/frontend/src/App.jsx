@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, TrendingDown, Trophy, Users, Building2, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, TrendingDown, Trophy, Users, Building2, PanelLeftClose, PanelLeftOpen, LogOut } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import SalesContracts from './pages/SalesContracts';
 import PurchaseContracts from './pages/PurchaseContracts';
 import Performance from './pages/Performance';
 import Salespeople from './pages/Salespeople';
 import Clients from './pages/Clients';
+import Login from './pages/Login';
 import { ToastContainer } from './components/Toast';
 import { ConfirmDialogContainer } from './components/ConfirmDialog';
 import { AlertModalContainer } from './components/AlertModal';
 import { CurrencyProvider } from './contexts/CurrencyContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import CurrencySelector from './components/CurrencySelector';
 import { cn } from '@/lib/utils';
 
@@ -24,80 +27,125 @@ const NAV_ITEMS = [
 ];
 
 export default function App() {
+  return (
+    <AuthProvider>
+      <CurrencyProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/*" element={
+              <ProtectedRoute>
+                <AppLayout />
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </BrowserRouter>
+      </CurrencyProvider>
+    </AuthProvider>
+  );
+}
+
+function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
+  const { user, logout } = useAuth();
 
   return (
-    <CurrencyProvider>
-      <BrowserRouter>
-        <div className="flex h-screen bg-background overflow-hidden">
-          {/* Sidebar */}
-          <nav className={cn(
-            'flex flex-col gradient-sidebar shrink-0 transition-all duration-300 ease-in-out border-r border-white/5',
-            collapsed ? 'w-[64px]' : 'w-[240px]'
-          )}>
-            {/* Logo */}
-            <div className="flex items-center min-h-[64px] border-b border-white/10">
-              {!collapsed && (
-                <div className="flex items-center gap-3 px-5 flex-1">
-                  <div className="w-8 h-8 rounded-lg gradient-blue flex items-center justify-center text-white text-sm font-bold shadow-lg">S</div>
-                  <div>
-                    <div className="text-sm font-bold text-white tracking-tight">SI 계약 ERP</div>
-                    <div className="text-[10px] text-slate-400">Contract Management</div>
-                  </div>
-                </div>
-              )}
-              <button
-                className={cn(
-                  'p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-150',
-                  collapsed ? 'mx-auto' : 'mr-3'
-                )}
-                onClick={() => setCollapsed(c => !c)}
-                title={collapsed ? '메뉴 펼치기' : '메뉴 접기'}
-              >
-                {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-              </button>
+    <div className="flex h-screen bg-background overflow-hidden">
+      {/* Sidebar */}
+      <nav className={cn(
+        'flex flex-col gradient-sidebar shrink-0 transition-all duration-300 ease-in-out border-r border-white/5',
+        collapsed ? 'w-[64px]' : 'w-[240px]'
+      )}>
+        {/* Logo */}
+        <div className="flex items-center min-h-[64px] border-b border-white/10">
+          {!collapsed && (
+            <div className="flex items-center gap-3 px-5 flex-1">
+              <div className="w-8 h-8 rounded-lg gradient-blue flex items-center justify-center text-white text-sm font-bold shadow-lg">S</div>
+              <div>
+                <div className="text-sm font-bold text-white tracking-tight">SI 계약 ERP</div>
+                <div className="text-[10px] text-slate-400">Contract Management</div>
+              </div>
             </div>
-
-            {/* Nav */}
-            <div className="flex flex-col gap-1 mt-4 px-3 flex-1">
-              {!collapsed && <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-2">메뉴</div>}
-              {NAV_ITEMS.map(item => (
-                <NavItem key={item.to} {...item} collapsed={collapsed} />
-              ))}
-            </div>
-
-            {/* Bottom */}
-            <div className="mt-auto">
-              <CurrencySelector collapsed={collapsed} />
-              {!collapsed && (
-                <div className="py-4 px-5 border-t border-white/10 text-center">
-                  <div className="text-[10px] text-slate-500 font-medium">v1.2.0 · SI 계약 관리</div>
-                </div>
-              )}
-            </div>
-          </nav>
-
-          {/* Overlays */}
-          <ToastContainer />
-          <ConfirmDialogContainer />
-          <AlertModalContainer />
-
-          {/* Main */}
-          <main className="flex-1 overflow-auto">
-            <div className="p-8 max-w-[1400px] mx-auto">
-              <Routes>
-                <Route path="/"             element={<Dashboard />} />
-                <Route path="/sales"        element={<SalesContracts />} />
-                <Route path="/purchase"     element={<PurchaseContracts />} />
-                <Route path="/performance"  element={<Performance />} />
-                <Route path="/salespeople"  element={<Salespeople />} />
-                <Route path="/clients"     element={<Clients />} />
-              </Routes>
-            </div>
-          </main>
+          )}
+          <button
+            className={cn(
+              'p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-150',
+              collapsed ? 'mx-auto' : 'mr-3'
+            )}
+            onClick={() => setCollapsed(c => !c)}
+            title={collapsed ? '메뉴 펼치기' : '메뉴 접기'}
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
         </div>
-      </BrowserRouter>
-    </CurrencyProvider>
+
+        {/* Nav */}
+        <div className="flex flex-col gap-1 mt-4 px-3 flex-1">
+          {!collapsed && <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-2">메뉴</div>}
+          {NAV_ITEMS.map(item => (
+            <NavItem key={item.to} {...item} collapsed={collapsed} />
+          ))}
+        </div>
+
+        {/* Bottom */}
+        <div className="mt-auto">
+          <CurrencySelector collapsed={collapsed} />
+          {/* User & Logout */}
+          <div className={cn(
+            'border-t border-white/10',
+            collapsed ? 'py-3 px-2' : 'py-3 px-4'
+          )}>
+            {!collapsed ? (
+              <div className="flex items-center justify-between">
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-white truncate">{user?.name}</div>
+                  <div className="text-[10px] text-slate-400 truncate">{user?.role}</div>
+                </div>
+                <button
+                  onClick={logout}
+                  className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-150"
+                  title="로그아웃"
+                >
+                  <LogOut size={16} />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={logout}
+                className="mx-auto flex items-center justify-center p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-150"
+                title="로그아웃"
+              >
+                <LogOut size={18} />
+              </button>
+            )}
+          </div>
+          {!collapsed && (
+            <div className="py-4 px-5 border-t border-white/10 text-center">
+              <div className="text-[10px] text-slate-500 font-medium">v1.2.0 · SI 계약 관리</div>
+            </div>
+          )}
+        </div>
+      </nav>
+
+      {/* Overlays */}
+      <ToastContainer />
+      <ConfirmDialogContainer />
+      <AlertModalContainer />
+
+      {/* Main */}
+      <main className="flex-1 overflow-auto">
+        <div className="p-8 max-w-[1400px] mx-auto">
+          <Routes>
+            <Route path="/"             element={<Dashboard />} />
+            <Route path="/sales"        element={<SalesContracts />} />
+            <Route path="/purchase"     element={<PurchaseContracts />} />
+            <Route path="/performance"  element={<Performance />} />
+            <Route path="/salespeople"  element={<Salespeople />} />
+            <Route path="/clients"     element={<Clients />} />
+          </Routes>
+        </div>
+      </main>
+    </div>
   );
 }
 
