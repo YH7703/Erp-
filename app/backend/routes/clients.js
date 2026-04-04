@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { requirePermission } = require('../middleware/rbac');
 
 // 거래처 목록 (필터: type, search)
 router.get('/', async (req, res, next) => {
@@ -52,7 +53,7 @@ router.get('/:id', async (req, res, next) => {
 });
 
 // 거래처 등록
-router.post('/', async (req, res, next) => {
+router.post('/', requirePermission('create'), async (req, res, next) => {
   try {
     const { name, business_no, ceo_name, address, phone, email, client_type, notes } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: '거래처명은 필수입니다.' });
@@ -63,6 +64,7 @@ router.post('/', async (req, res, next) => {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [name.trim(), business_no || null, ceo_name || null, address || null, phone || null, email || null, client_type, notes || null]
     );
+    await req.audit('CREATE', 'client', r.insertId, null, req.body);
     res.status(201).json({ id: r.insertId });
   } catch (err) {
     next(err);
@@ -70,17 +72,19 @@ router.post('/', async (req, res, next) => {
 });
 
 // 거래처 수정
-router.put('/:id', async (req, res, next) => {
+router.put('/:id', requirePermission('update'), async (req, res, next) => {
   try {
     const { name, business_no, ceo_name, address, phone, email, client_type, notes } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ error: '거래처명은 필수입니다.' });
     if (!client_type) return res.status(400).json({ error: '거래처 유형은 필수입니다.' });
 
+    const [before] = await db.query('SELECT * FROM client WHERE id = ?', [req.params.id]);
     await db.query(
       `UPDATE client SET name=?, business_no=?, ceo_name=?, address=?, phone=?, email=?, client_type=?, notes=?
        WHERE id=?`,
       [name.trim(), business_no || null, ceo_name || null, address || null, phone || null, email || null, client_type, notes || null, req.params.id]
     );
+    await req.audit('UPDATE', 'client', parseInt(req.params.id), before[0], req.body);
     res.json({ ok: true });
   } catch (err) {
     next(err);
@@ -88,7 +92,7 @@ router.put('/:id', async (req, res, next) => {
 });
 
 // 거래처 삭제 (연결된 계약이 있으면 거부)
-router.delete('/:id', async (req, res, next) => {
+router.delete('/:id', requirePermission('delete'), async (req, res, next) => {
   try {
     const [[{ sc }]] = await db.query(
       'SELECT COUNT(*) AS sc FROM sales_contract WHERE client_id = ?', [req.params.id]
@@ -99,7 +103,9 @@ router.delete('/:id', async (req, res, next) => {
     if (sc > 0 || pc > 0) {
       return res.status(400).json({ error: `연결된 계약이 있어 삭제할 수 없습니다. (매출: ${sc}건, 매입: ${pc}건)` });
     }
+    const [before] = await db.query('SELECT * FROM client WHERE id = ?', [req.params.id]);
     await db.query('DELETE FROM client WHERE id = ?', [req.params.id]);
+    await req.audit('DELETE', 'client', parseInt(req.params.id), before[0], null);
     res.json({ ok: true });
   } catch (err) {
     next(err);

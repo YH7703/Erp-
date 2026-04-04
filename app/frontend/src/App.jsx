@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   { to: '/sales',       label: '매출계약',      icon: TrendingUp },
   { to: '/purchase',    label: '매입계약',      icon: TrendingDown },
   { to: '/performance', label: '영업 성과',    icon: Trophy },
-  { to: '/salespeople', label: '영업사원 관리', icon: Users },
+  { to: '/salespeople', label: '영업사원 관리', icon: Users, roles: ['admin', 'manager'] },
   { to: '/clients',     label: '거래처 관리',   icon: Building2 },
 ];
 
@@ -82,7 +82,7 @@ function AppLayout() {
         {/* Nav */}
         <div className="flex flex-col gap-1 mt-4 px-3 flex-1">
           {!collapsed && <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-2">메뉴</div>}
-          {NAV_ITEMS.map(item => (
+          {NAV_ITEMS.filter(item => !item.roles || item.roles.includes(user?.role)).map(item => (
             <NavItem key={item.to} {...item} collapsed={collapsed} />
           ))}
         </div>

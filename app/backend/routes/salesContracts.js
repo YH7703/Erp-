@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const { requirePermission } = require('../middleware/rbac');
 
 // 목록 조회
 router.get('/', async (req, res) => {
@@ -59,7 +60,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // 등록
-router.post('/', async (req, res) => {
+router.post('/', requirePermission('create'), async (req, res) => {
   const { contract_no, contract_name, client_name, amount, currency, original_amount, start_date, end_date, status, project_type, salesperson_id, notes } = req.body;
   try {
     const [result] = await db.query(
@@ -68,6 +69,7 @@ router.post('/', async (req, res) => {
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
       [contract_no, contract_name, client_name, amount, currency || 'KRW', original_amount || amount, start_date, end_date, status || '등록', project_type, salesperson_id, notes || null]
     );
+    await req.audit('CREATE', 'sales_contract', result.insertId, null, req.body);
     res.status(201).json({ id: result.insertId, message: '매출계약이 등록되었습니다' });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: '이미 존재하는 계약번호입니다' });
@@ -76,9 +78,10 @@ router.post('/', async (req, res) => {
 });
 
 // 수정
-router.put('/:id', async (req, res) => {
+router.put('/:id', requirePermission('update'), async (req, res) => {
   const { contract_no, contract_name, client_name, amount, currency, original_amount, start_date, end_date, status, project_type, salesperson_id, notes } = req.body;
   try {
+    const [before] = await db.query('SELECT * FROM sales_contract WHERE id = ?', [req.params.id]);
     await db.query(
       `UPDATE sales_contract
        SET contract_no=?, contract_name=?, client_name=?, amount=?,
@@ -87,6 +90,7 @@ router.put('/:id', async (req, res) => {
        WHERE id=?`,
       [contract_no, contract_name, client_name, amount, currency || 'KRW', original_amount || amount, start_date, end_date, status, project_type, salesperson_id, notes || null, req.params.id]
     );
+    await req.audit('UPDATE', 'sales_contract', parseInt(req.params.id), before[0], req.body);
     res.json({ message: '매출계약이 수정되었습니다' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -94,13 +98,15 @@ router.put('/:id', async (req, res) => {
 });
 
 // 삭제
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requirePermission('delete'), async (req, res) => {
   try {
     const [[{ cnt }]] = await db.query(
       'SELECT COUNT(*) AS cnt FROM purchase_contract WHERE sales_contract_id = ?', [req.params.id]
     );
     if (cnt > 0) return res.status(400).json({ error: `연결된 매입계약 ${cnt}건이 있어 삭제할 수 없습니다` });
+    const [before] = await db.query('SELECT * FROM sales_contract WHERE id = ?', [req.params.id]);
     await db.query('DELETE FROM sales_contract WHERE id = ?', [req.params.id]);
+    await req.audit('DELETE', 'sales_contract', parseInt(req.params.id), before[0], null);
     res.json({ message: '매출계약이 삭제되었습니다' });
   } catch (err) {
     res.status(500).json({ error: err.message });
