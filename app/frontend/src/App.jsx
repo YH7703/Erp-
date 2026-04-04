@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, NavLink } from 'react-router-dom';
-import { LayoutDashboard, TrendingUp, TrendingDown, Trophy, Users, Building2, FileEdit, Receipt, PanelLeftClose, PanelLeftOpen, LogOut } from 'lucide-react';
+import { LayoutDashboard, TrendingUp, TrendingDown, Trophy, Users, Building2, FileEdit, Receipt, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import Dashboard from './pages/Dashboard';
 import SalesContracts from './pages/SalesContracts';
 import PurchaseContracts from './pages/PurchaseContracts';
@@ -9,13 +9,10 @@ import Salespeople from './pages/Salespeople';
 import Clients from './pages/Clients';
 import Quotations from './pages/Quotations';
 import Invoices from './pages/Invoices';
-import Login from './pages/Login';
 import { ToastContainer } from './components/Toast';
 import { ConfirmDialogContainer } from './components/ConfirmDialog';
 import { AlertModalContainer } from './components/AlertModal';
 import { CurrencyProvider } from './contexts/CurrencyContext';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
 import CurrencySelector from './components/CurrencySelector';
 import { cn } from '@/lib/utils';
 
@@ -24,34 +21,26 @@ const NAV_ITEMS = [
   { to: '/sales',       label: '매출계약',      icon: TrendingUp },
   { to: '/purchase',    label: '매입계약',      icon: TrendingDown },
   { to: '/performance', label: '영업 성과',    icon: Trophy },
-  { to: '/salespeople', label: '영업사원 관리', icon: Users, roles: ['admin', 'manager'] },
-  { to: '/quotations',  label: '견적서',         icon: FileEdit, roles: ['admin', 'manager', 'sales'] },
-  { to: '/invoices',    label: '인보이스',       icon: Receipt, roles: ['admin', 'manager', 'finance'] },
+  { to: '/salespeople', label: '영업사원 관리', icon: Users },
+  { to: '/quotations',  label: '견적서',         icon: FileEdit },
+  { to: '/invoices',    label: '인보이스',       icon: Receipt },
   { to: '/clients',     label: '거래처 관리',   icon: Building2 },
 ];
 
 export default function App() {
   return (
-    <AuthProvider>
-      <CurrencyProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/*" element={
-              <ProtectedRoute>
-                <AppLayout />
-              </ProtectedRoute>
-            } />
-          </Routes>
-        </BrowserRouter>
-      </CurrencyProvider>
-    </AuthProvider>
+    <CurrencyProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/*" element={<AppLayout />} />
+        </Routes>
+      </BrowserRouter>
+    </CurrencyProvider>
   );
 }
 
 function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
-  const { user, logout } = useAuth();
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -86,7 +75,7 @@ function AppLayout() {
         {/* Nav */}
         <div className="flex flex-col gap-1 mt-4 px-3 flex-1">
           {!collapsed && <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest px-3 mb-2">메뉴</div>}
-          {NAV_ITEMS.filter(item => !item.roles || item.roles.includes(user?.role)).map(item => (
+          {NAV_ITEMS.map(item => (
             <NavItem key={item.to} {...item} collapsed={collapsed} />
           ))}
         </div>
@@ -94,35 +83,6 @@ function AppLayout() {
         {/* Bottom */}
         <div className="mt-auto">
           <CurrencySelector collapsed={collapsed} />
-          {/* User & Logout */}
-          <div className={cn(
-            'border-t border-white/10',
-            collapsed ? 'py-3 px-2' : 'py-3 px-4'
-          )}>
-            {!collapsed ? (
-              <div className="flex items-center justify-between">
-                <div className="min-w-0">
-                  <div className="text-xs font-medium text-white truncate">{user?.name}</div>
-                  <div className="text-[10px] text-slate-400 truncate">{user?.role}</div>
-                </div>
-                <button
-                  onClick={logout}
-                  className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-150"
-                  title="로그아웃"
-                >
-                  <LogOut size={16} />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={logout}
-                className="mx-auto flex items-center justify-center p-2 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-all duration-150"
-                title="로그아웃"
-              >
-                <LogOut size={18} />
-              </button>
-            )}
-          </div>
           {!collapsed && (
             <div className="py-4 px-5 border-t border-white/10 text-center">
               <div className="text-[10px] text-slate-500 font-medium">v1.2.0 · SI 계약 관리</div>

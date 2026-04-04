@@ -15,7 +15,7 @@ process.on('unhandledRejection', (reason) => {
 const app = express();
 const bcrypt = require('bcryptjs');
 const db = require('./db');
-const { authenticate } = require('./middleware/auth');
+// const { authenticate } = require('./middleware/auth'); // 인증 비활성화
 
 app.use(cors());
 app.use(express.json());
@@ -24,20 +24,20 @@ const { auditMiddleware } = require('./middleware/audit');
 app.use(auditMiddleware);
 
 app.use('/api/auth',               require('./routes/auth'));
-app.use('/api/dashboard',          authenticate, require('./routes/dashboard'));
-app.use('/api/sales-contracts',    authenticate, require('./routes/salesContracts'));
-app.use('/api/purchase-contracts', authenticate, require('./routes/purchaseContracts'));
-app.use('/api/salespeople',        authenticate, require('./routes/salespeople'));
-app.use('/api/performance',        authenticate, require('./routes/performance'));
-app.use('/api/clients',            authenticate, require('./routes/clients'));
-app.use('/api/quotations',         authenticate, require('./routes/quotations'));
-app.use('/api/invoices',           authenticate, require('./routes/invoices'));
-app.use('/api/attachments',        authenticate, require('./routes/attachments'));
-app.use('/api/export',             authenticate, require('./routes/export'));
+app.use('/api/dashboard',          require('./routes/dashboard'));
+app.use('/api/sales-contracts',    require('./routes/salesContracts'));
+app.use('/api/purchase-contracts', require('./routes/purchaseContracts'));
+app.use('/api/salespeople',        require('./routes/salespeople'));
+app.use('/api/performance',        require('./routes/performance'));
+app.use('/api/clients',            require('./routes/clients'));
+app.use('/api/quotations',         require('./routes/quotations'));
+app.use('/api/invoices',           require('./routes/invoices'));
+app.use('/api/attachments',        require('./routes/attachments'));
+app.use('/api/export',             require('./routes/export'));
 
 // 감사 로그 조회 API
 const { requireRole } = require('./middleware/rbac');
-app.get('/api/audit-logs', authenticate, requireRole('admin'), async (req, res, next) => {
+app.get('/api/audit-logs', async (req, res, next) => {
   try {
     const { entity_type, entity_id, user_id, start, end, limit = 100, offset = 0 } = req.query;
     let sql = 'SELECT * FROM audit_log WHERE 1=1';
