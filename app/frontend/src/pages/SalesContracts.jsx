@@ -7,6 +7,8 @@ import ErrorBanner from '../components/ErrorBanner';
 import EmptyState from '../components/EmptyState';
 import useDebounce from '../hooks/useDebounce';
 import { useCurrency } from '../contexts/CurrencyContext';
+import AdvancedFilter from '../components/AdvancedFilter';
+import ExportButton from '../components/ExportButton';
 import CurrencyAmountInput, { toKRW, fromKRW } from '../components/CurrencyAmountInput';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,12 +30,23 @@ const daysLeft = (d) => Math.ceil((new Date(d) - new Date()) / 86400000);
 
 const EMPTY = { contract_no: '', contract_name: '', client_name: '', amount: '', input_currency: 'KRW', input_amount: '', start_date: '', end_date: '', status: '등록', project_type: '신규개발', salesperson_id: '', notes: '' };
 
+const advFilters = [
+  { key: 'project_type', label: '프로젝트유형', type: 'select', options: [{value:'신규개발',label:'신규개발'},{value:'유지보수',label:'유지보수'},{value:'컨설팅',label:'컨설팅'}] },
+  { key: 'start_from', label: '시작일(부터)', type: 'date' },
+  { key: 'start_to', label: '시작일(까지)', type: 'date' },
+  { key: 'end_from', label: '종료일(부터)', type: 'date' },
+  { key: 'end_to', label: '종료일(까지)', type: 'date' },
+  { key: 'amount_min', label: '최소 금액', type: 'number', placeholder: '0' },
+  { key: 'amount_max', label: '최대 금액', type: 'number', placeholder: '999999999' },
+];
+
 export default function SalesContracts() {
   const { fmtM, fmtFull } = useCurrency();
   const [list, setList] = useState([]);
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({ status: 'all', search: '', salesperson_id: '' });
+  const [advFilter, setAdvFilter] = useState({});
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState(EMPTY);
   const [detail, setDetail] = useState(null);
@@ -46,7 +59,11 @@ export default function SalesContracts() {
 
   const load = useCallback(() => {
     setLoading(true); setError('');
-    api.getSalesContracts({ status: filter.status !== 'all' ? filter.status : undefined, search: debouncedSearch || undefined, salesperson_id: filter.salesperson_id || undefined })
+    const params = { ...advFilter };
+    if (filter.status !== 'all') params.status = filter.status;
+    if (debouncedSearch) params.search = debouncedSearch;
+    if (filter.salesperson_id) params.salesperson_id = filter.salesperson_id;
+    api.getSalesContracts(params)
       .then(data => {
         setList(data);
         if (data.length === 0 && filter.status === 'all' && !debouncedSearch && !filter.salesperson_id) {
@@ -58,7 +75,7 @@ export default function SalesContracts() {
         alertError('매출계약 로드 실패', `매출계약 데이터를 불러오는 중 오류가 발생했습니다.\n\n오류: ${e.message}`);
       })
       .finally(() => setLoading(false));
-  }, [filter.status, debouncedSearch, filter.salesperson_id]);
+  }, [filter.status, debouncedSearch, filter.salesperson_id, advFilter]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { api.getSalespeople().then(setPeople); }, []);
@@ -153,6 +170,7 @@ export default function SalesContracts() {
           {!loading && <span className="text-[13px] text-slate-400">총 {list.length}건</span>}
         </div>
         <div className="flex gap-2">
+          <ExportButton type="sales-contracts" />
           <Button variant="secondary" onClick={() => exportCSV(list)}>
             <Download className="h-4 w-4 mr-1.5" />
             CSV 내보내기
@@ -200,6 +218,8 @@ export default function SalesContracts() {
           {people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </Select>
       </div>
+
+      <AdvancedFilter filters={advFilters} values={advFilter} onChange={setAdvFilter} />
 
       {error && <ErrorBanner message={error} onRetry={load} />}
 

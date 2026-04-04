@@ -7,6 +7,8 @@ import ErrorBanner from '../components/ErrorBanner';
 import EmptyState from '../components/EmptyState';
 import useDebounce from '../hooks/useDebounce';
 import { useCurrency } from '../contexts/CurrencyContext';
+import AdvancedFilter from '../components/AdvancedFilter';
+import ExportButton from '../components/ExportButton';
 import CurrencyAmountInput, { toKRW, fromKRW } from '../components/CurrencyAmountInput';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +30,15 @@ const STATUS_CLASSES = {
 
 const EMPTY = { contract_no: '', contract_name: '', vendor_name: '', worker_name: '', monthly_rate: '', months: '', input_currency: 'KRW', input_monthly_rate: '', start_date: '', end_date: '', status: '등록', sales_contract_id: '', notes: '' };
 
+const advFilters = [
+  { key: 'start_from', label: '시작일(부터)', type: 'date' },
+  { key: 'start_to', label: '시작일(까지)', type: 'date' },
+  { key: 'end_from', label: '종료일(부터)', type: 'date' },
+  { key: 'end_to', label: '종료일(까지)', type: 'date' },
+  { key: 'amount_min', label: '최소 금액', type: 'number', placeholder: '0' },
+  { key: 'amount_max', label: '최대 금액', type: 'number', placeholder: '999999999' },
+];
+
 export default function PurchaseContracts() {
   const { fmtM, fmtFull } = useCurrency();
   const [list, setList]     = useState([]);
@@ -40,6 +51,7 @@ export default function PurchaseContracts() {
   const [error, setError]   = useState('');
   const [formErrors, setFormErrors] = useState({});
   const [sort, setSort]     = useState({ key: null, asc: true });
+  const [advFilter, setAdvFilter] = useState({});
 
   const debouncedSearch = useDebounce(filter.search);
 
@@ -59,7 +71,10 @@ export default function PurchaseContracts() {
 
   const load = useCallback(() => {
     setLoading(true); setError('');
-    api.getPurchaseContracts({ status: filter.status !== 'all' ? filter.status : undefined, search: debouncedSearch || undefined })
+    const params = { ...advFilter };
+    if (filter.status !== 'all') params.status = filter.status;
+    if (debouncedSearch) params.search = debouncedSearch;
+    api.getPurchaseContracts(params)
       .then(data => {
         setList(data);
         if (data.length === 0 && filter.status === 'all' && !debouncedSearch) {
@@ -71,7 +86,7 @@ export default function PurchaseContracts() {
         alertError('매입계약 로드 실패', `매입계약 데이터를 불러오는 중 오류가 발생했습니다.\n\n오류: ${e.message}`);
       })
       .finally(() => setLoading(false));
-  }, [filter.status, debouncedSearch]);
+  }, [filter.status, debouncedSearch, advFilter]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { api.getSalesContracts().then(setSalesList); }, []);
@@ -154,6 +169,7 @@ export default function PurchaseContracts() {
           {!loading && <span className="text-[13px] text-slate-400">총 {list.length}건</span>}
         </div>
         <div className="flex gap-2">
+          <ExportButton type="purchase-contracts" />
           <Button variant="secondary" onClick={() => exportCSV(list)}>
             <Download className="mr-1.5 h-4 w-4" />
             CSV 내보내기
@@ -192,6 +208,8 @@ export default function PurchaseContracts() {
           )}
         </div>
       </div>
+
+      <AdvancedFilter filters={advFilters} values={advFilter} onChange={setAdvFilter} />
 
       {error && <ErrorBanner message={error} onRetry={load} />}
 

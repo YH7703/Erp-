@@ -8,6 +8,8 @@ import ErrorBanner from '../components/ErrorBanner';
 import EmptyState from '../components/EmptyState';
 import useDebounce from '../hooks/useDebounce';
 import { useCurrency } from '../contexts/CurrencyContext';
+import AdvancedFilter from '../components/AdvancedFilter';
+import ExportButton from '../components/ExportButton';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +29,13 @@ const STATUS_VARIANT = { 작성: 'default', 제출: 'info', 승인: 'success', �
 const EMPTY_ITEM = { description: '', quantity: 1, unit_price: '' };
 const EMPTY = { quotation_no: '', title: '', client_id: '', salesperson_id: '', status: '작성', valid_until: '', currency: 'KRW', notes: '', items: [{ ...EMPTY_ITEM }] };
 
+const advFilters = [
+  { key: 'amount_min', label: '최소 금액', type: 'number', placeholder: '0' },
+  { key: 'amount_max', label: '최대 금액', type: 'number', placeholder: '999999999' },
+  { key: 'valid_from', label: '유효기간(부터)', type: 'date' },
+  { key: 'valid_to', label: '유효기간(까지)', type: 'date' },
+];
+
 export default function Quotations() {
   const navigate = useNavigate();
   const { fmtM, fmtFull } = useCurrency();
@@ -42,6 +51,7 @@ export default function Quotations() {
   const [error, setError] = useState('');
   const [formErrors, setFormErrors] = useState({});
   const [sort, setSort] = useState({ key: null, asc: true });
+  const [advFilter, setAdvFilter] = useState({});
   const [convertForm, setConvertForm] = useState({ contract_no: '', start_date: '', end_date: '', project_type: '신규개발' });
   const [convertErrors, setConvertErrors] = useState({});
 
@@ -49,7 +59,11 @@ export default function Quotations() {
 
   const load = useCallback(() => {
     setLoading(true); setError('');
-    api.getQuotations({ status: filter.status !== 'all' ? filter.status : undefined, search: debouncedSearch || undefined, salesperson_id: filter.salesperson_id || undefined })
+    const params = { ...advFilter };
+    if (filter.status !== 'all') params.status = filter.status;
+    if (debouncedSearch) params.search = debouncedSearch;
+    if (filter.salesperson_id) params.salesperson_id = filter.salesperson_id;
+    api.getQuotations(params)
       .then(data => {
         setList(data);
         if (data.length === 0 && filter.status === 'all' && !debouncedSearch && !filter.salesperson_id) {
@@ -61,7 +75,7 @@ export default function Quotations() {
         alertError('견적서 로드 실패', `견적서 데이터를 불러오는 중 오류가 발생했습니다.\n\n오류: ${e.message}`);
       })
       .finally(() => setLoading(false));
-  }, [filter.status, debouncedSearch, filter.salesperson_id]);
+  }, [filter.status, debouncedSearch, filter.salesperson_id, advFilter]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
@@ -216,10 +230,13 @@ export default function Quotations() {
           <h1 className="text-2xl font-bold text-slate-800">견적서 관리</h1>
           {!loading && <span className="text-[13px] text-slate-400">총 {list.length}건</span>}
         </div>
-        <Button onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-1.5" />
-          견적서 등록
-        </Button>
+        <div className="flex gap-2">
+          <ExportButton type="quotations" />
+          <Button onClick={openCreate}>
+            <Plus className="h-4 w-4 mr-1.5" />
+            견적서 등록
+          </Button>
+        </div>
       </div>
 
       {/* 필터 */}
@@ -251,6 +268,8 @@ export default function Quotations() {
           {people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </Select>
       </div>
+
+      <AdvancedFilter filters={advFilters} values={advFilter} onChange={setAdvFilter} />
 
       {error && <ErrorBanner message={error} onRetry={load} />}
 

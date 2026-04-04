@@ -7,6 +7,8 @@ import ErrorBanner from '../components/ErrorBanner';
 import EmptyState from '../components/EmptyState';
 import useDebounce from '../hooks/useDebounce';
 import { useCurrency } from '../contexts/CurrencyContext';
+import AdvancedFilter from '../components/AdvancedFilter';
+import ExportButton from '../components/ExportButton';
 import { cn } from '@/lib/utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +29,15 @@ const EMPTY = {
   original_amount: '', issue_date: '', due_date: '', status: '발행', notes: '',
 };
 
+const advFilters = [
+  { key: 'amount_min', label: '최소 금액', type: 'number', placeholder: '0' },
+  { key: 'amount_max', label: '최대 금액', type: 'number', placeholder: '999999999' },
+  { key: 'issue_from', label: '발행일(부터)', type: 'date' },
+  { key: 'issue_to', label: '발행일(까지)', type: 'date' },
+  { key: 'due_from', label: '만기일(부터)', type: 'date' },
+  { key: 'due_to', label: '만기일(까지)', type: 'date' },
+];
+
 export default function Invoices() {
   const { fmtM, fmtFull } = useCurrency();
   const [list, setList] = useState([]);
@@ -41,15 +52,16 @@ export default function Invoices() {
   const [error, setError] = useState('');
   const [formErrors, setFormErrors] = useState({});
   const [sort, setSort] = useState({ key: null, asc: true });
+  const [advFilter, setAdvFilter] = useState({});
 
   const debouncedSearch = useDebounce(filter.search);
 
   const load = useCallback(() => {
     setLoading(true); setError('');
-    api.getInvoices({
-      status: filter.status !== 'all' ? filter.status : undefined,
-      search: debouncedSearch || undefined,
-    })
+    const params = { ...advFilter };
+    if (filter.status !== 'all') params.status = filter.status;
+    if (debouncedSearch) params.search = debouncedSearch;
+    api.getInvoices(params)
       .then(data => {
         setList(data);
         if (data.length === 0 && filter.status === 'all' && !debouncedSearch) {
@@ -61,7 +73,7 @@ export default function Invoices() {
         alertError('인보이스 로드 실패', `인보이스 데이터를 불러오는 중 오류가 발생했습니다.\n\n오류: ${e.message}`);
       })
       .finally(() => setLoading(false));
-  }, [filter.status, debouncedSearch]);
+  }, [filter.status, debouncedSearch, advFilter]);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
@@ -202,6 +214,7 @@ export default function Invoices() {
           {!loading && <span className="text-[13px] text-slate-400">총 {list.length}건</span>}
         </div>
         <div className="flex gap-2">
+          <ExportButton type="invoices" />
           <Button variant="secondary" onClick={() => exportCSV(list, fmtFull)}>
             <Download className="h-4 w-4 mr-1.5" />
             CSV 내보내기
@@ -241,6 +254,8 @@ export default function Invoices() {
           )}
         </div>
       </div>
+
+      <AdvancedFilter filters={advFilters} values={advFilter} onChange={setAdvFilter} />
 
       {error && <ErrorBanner message={error} onRetry={load} />}
 
