@@ -28,7 +28,7 @@ const STATUS_CLASSES = {
   종료: 'border-slate-400/30 bg-slate-50 text-slate-500',
 };
 
-const EMPTY = { contract_no: '', contract_name: '', vendor_name: '', worker_name: '', monthly_rate: '', months: '', input_currency: 'KRW', input_monthly_rate: '', start_date: '', end_date: '', status: '등록', sales_contract_id: '', notes: '' };
+const EMPTY = { contract_no: '', contract_name: '', vendor_id: '', vendor_name: '', worker_name: '', monthly_rate: '', months: '', input_currency: 'KRW', input_monthly_rate: '', start_date: '', end_date: '', status: '등록', sales_contract_id: '', notes: '' };
 
 const advFilters = [
   { key: 'start_from', label: '시작일(부터)', type: 'date' },
@@ -42,6 +42,7 @@ const advFilters = [
 export default function PurchaseContracts() {
   const { fmtM, fmtFull } = useCurrency();
   const [list, setList]     = useState([]);
+  const [vendors, setVendors] = useState([]);
   const [salesList, setSalesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({ status: 'all', search: '' });
@@ -59,7 +60,7 @@ export default function PurchaseContracts() {
     const e = {};
     if (!form.contract_no.trim())    e.contract_no    = '계약번호를 입력하세요.';
     if (!form.contract_name.trim())  e.contract_name  = '계약명을 입력하세요.';
-    if (!form.vendor_name.trim())    e.vendor_name    = '외주업체명을 입력하세요.';
+    if (!form.vendor_id)              e.vendor_name    = '외주업체를 선택하세요.';
     if (!form.input_monthly_rate || Number(form.input_monthly_rate) <= 0) e.monthly_rate = '월단가를 올바르게 입력하세요.';
     if (!form.months || Number(form.months) <= 0) e.months = '개월수를 올바르게 입력하세요.';
     if (!form.start_date) e.start_date = '시작일을 선택하세요.';
@@ -90,6 +91,7 @@ export default function PurchaseContracts() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { api.getSalesContracts().then(setSalesList); }, []);
+  useEffect(() => { api.getClients().then(data => setVendors((Array.isArray(data) ? data : (data.rows || [])).filter(c => c.type === '협력사'))); }, []);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape' && modal) setModal(null); };
@@ -281,7 +283,17 @@ export default function PurchaseContracts() {
               <Input className={cn(formErrors.contract_name && 'border-red-300 bg-red-50')} value={form.contract_name} onChange={e => setForm(f => ({ ...f, contract_name: e.target.value }))} />
             </Field>
             <Field label="외주업체명 *" error={formErrors.vendor_name}>
-              <Input className={cn(formErrors.vendor_name && 'border-red-300 bg-red-50')} value={form.vendor_name} onChange={e => setForm(f => ({ ...f, vendor_name: e.target.value }))} />
+              <select
+                className={cn(
+                  'flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                  formErrors.vendor_name && 'border-red-300 bg-red-50'
+                )}
+                value={form.vendor_id || ''}
+                onChange={e => { const v = vendors.find(vn => String(vn.id) === e.target.value); setForm(f => ({ ...f, vendor_id: e.target.value, vendor_name: v ? v.name : '' })); }}
+              >
+                <option value="">외주업체 선택</option>
+                {vendors.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+              </select>
             </Field>
             <Field label="투입인력명">
               <Input value={form.worker_name} onChange={e => setForm(f => ({ ...f, worker_name: e.target.value }))} />

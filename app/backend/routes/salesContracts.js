@@ -69,13 +69,13 @@ router.get('/:id', async (req, res) => {
 
 // 등록
 router.post('/', requirePermission('create'), async (req, res) => {
-  const { contract_no, contract_name, client_name, amount, currency, original_amount, start_date, end_date, status, project_type, salesperson_id, notes } = req.body;
+  const { contract_no, contract_name, client_id, client_name, amount, currency, original_amount, start_date, end_date, status, project_type, salesperson_id, notes } = req.body;
   try {
     const [result] = await db.query(
       `INSERT INTO sales_contract
-        (contract_no, contract_name, client_name, amount, currency, original_amount, start_date, end_date, status, project_type, salesperson_id, notes)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [contract_no, contract_name, client_name, amount, currency || 'KRW', original_amount || amount, start_date, end_date, status || '등록', project_type, salesperson_id, notes || null]
+        (contract_no, contract_name, client_id, client_name, amount, currency, original_amount, start_date, end_date, status, project_type, salesperson_id, notes)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [contract_no, contract_name, client_id || null, client_name, amount, currency || 'KRW', original_amount || amount, start_date, end_date, status || '등록', project_type, salesperson_id, notes || null]
     );
     await req.audit('CREATE', 'sales_contract', result.insertId, null, req.body);
     res.status(201).json({ id: result.insertId, message: '매출계약이 등록되었습니다' });
@@ -87,16 +87,16 @@ router.post('/', requirePermission('create'), async (req, res) => {
 
 // 수정
 router.put('/:id', requirePermission('update'), async (req, res) => {
-  const { contract_no, contract_name, client_name, amount, currency, original_amount, start_date, end_date, status, project_type, salesperson_id, notes } = req.body;
+  const { contract_no, contract_name, client_id, client_name, amount, currency, original_amount, start_date, end_date, status, project_type, salesperson_id, notes } = req.body;
   try {
     const [before] = await db.query('SELECT * FROM sales_contract WHERE id = ?', [req.params.id]);
     await db.query(
       `UPDATE sales_contract
-       SET contract_no=?, contract_name=?, client_name=?, amount=?,
+       SET contract_no=?, contract_name=?, client_id=?, client_name=?, amount=?,
            currency=?, original_amount=?,
            start_date=?, end_date=?, status=?, project_type=?, salesperson_id=?, notes=?
        WHERE id=?`,
-      [contract_no, contract_name, client_name, amount, currency || 'KRW', original_amount || amount, start_date, end_date, status, project_type, salesperson_id, notes || null, req.params.id]
+      [contract_no, contract_name, client_id || null, client_name, amount, currency || 'KRW', original_amount || amount, start_date, end_date, status, project_type, salesperson_id, notes || null, req.params.id]
     );
     await req.audit('UPDATE', 'sales_contract', parseInt(req.params.id), before[0], req.body);
     res.json({ message: '매출계약이 수정되었습니다' });

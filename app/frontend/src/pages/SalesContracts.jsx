@@ -28,7 +28,7 @@ const TYPE_COLORS = { 신규개발: 'text-violet-600', 유지보수: 'text-cyan-
 
 const daysLeft = (d) => Math.ceil((new Date(d) - new Date()) / 86400000);
 
-const EMPTY = { contract_no: '', contract_name: '', client_name: '', amount: '', input_currency: 'KRW', input_amount: '', start_date: '', end_date: '', status: '등록', project_type: '신규개발', salesperson_id: '', notes: '' };
+const EMPTY = { contract_no: '', contract_name: '', client_id: '', client_name: '', amount: '', input_currency: 'KRW', input_amount: '', start_date: '', end_date: '', status: '등록', project_type: '신규개발', salesperson_id: '', notes: '' };
 
 const advFilters = [
   { key: 'project_type', label: '프로젝트유형', type: 'select', options: [{value:'신규개발',label:'신규개발'},{value:'유지보수',label:'유지보수'},{value:'컨설팅',label:'컨설팅'}] },
@@ -43,6 +43,7 @@ const advFilters = [
 export default function SalesContracts() {
   const { fmtM, fmtFull } = useCurrency();
   const [list, setList] = useState([]);
+  const [clients, setClients] = useState([]);
   const [people, setPeople] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState({ status: 'all', search: '', salesperson_id: '' });
@@ -79,6 +80,7 @@ export default function SalesContracts() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { api.getSalespeople().then(setPeople); }, []);
+  useEffect(() => { api.getClients().then(data => setClients((Array.isArray(data) ? data : (data.rows || [])).filter(c => c.type !== '협력사'))); }, []);
 
   // ESC로 모달 닫기
   useEffect(() => {
@@ -91,7 +93,7 @@ export default function SalesContracts() {
     const e = {};
     if (!form.contract_no.trim())    e.contract_no    = '계약번호를 입력하세요.';
     if (!form.contract_name.trim())  e.contract_name  = '계약명을 입력하세요.';
-    if (!form.client_name.trim())    e.client_name    = '고객사를 입력하세요.';
+    if (!form.client_id)              e.client_name    = '고객사를 선택하세요.';
     if (!form.input_amount || Number(form.input_amount) <= 0) e.amount = '계약금액을 올바르게 입력하세요.';
     if (!form.start_date)            e.start_date     = '시작일을 선택하세요.';
     if (!form.end_date)              e.end_date       = '종료일을 선택하세요.';
@@ -325,7 +327,10 @@ export default function SalesContracts() {
               <Input className={cn(formErrors.contract_name && 'border-red-300 bg-red-50')} value={form.contract_name} onChange={e => setForm(f => ({ ...f, contract_name: e.target.value }))} />
             </Field>
             <Field label="고객사 *" error={formErrors.client_name}>
-              <Input className={cn(formErrors.client_name && 'border-red-300 bg-red-50')} value={form.client_name} onChange={e => setForm(f => ({ ...f, client_name: e.target.value }))} />
+              <Select className={cn(formErrors.client_name && 'border-red-300 bg-red-50')} value={form.client_id || ''} onChange={e => { const c = clients.find(cl => String(cl.id) === e.target.value); setForm(f => ({ ...f, client_id: e.target.value, client_name: c ? c.name : '' })); }}>
+                <option value="">고객사 선택</option>
+                {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </Select>
             </Field>
             <Field label="계약금액 *" error={formErrors.amount}>
               <CurrencyAmountInput
