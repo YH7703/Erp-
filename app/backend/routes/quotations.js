@@ -5,7 +5,7 @@ const { requirePermission } = require('../middleware/rbac');
 
 // 목록 조회
 router.get('/', async (req, res) => {
-  const { status, search, salesperson_id } = req.query;
+  const { status, search, salesperson_id, amount_min, amount_max, client_id, valid_from, valid_to } = req.query;
   try {
     const where = ['1=1'];
     const params = [];
@@ -15,6 +15,11 @@ router.get('/', async (req, res) => {
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
     if (salesperson_id) { where.push('q.salesperson_id = ?'); params.push(salesperson_id); }
+    if (amount_min) { where.push('q.amount >= ?'); params.push(parseFloat(amount_min)); }
+    if (amount_max) { where.push('q.amount <= ?'); params.push(parseFloat(amount_max)); }
+    if (client_id)  { where.push('q.client_id = ?'); params.push(client_id); }
+    if (valid_from) { where.push('q.valid_until >= ?'); params.push(valid_from); }
+    if (valid_to)   { where.push('q.valid_until <= ?'); params.push(valid_to); }
 
     const [rows] = await db.query(`
       SELECT q.*, c.name AS client_name, s.name AS salesperson_name,

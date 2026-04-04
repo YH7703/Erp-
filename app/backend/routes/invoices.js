@@ -5,7 +5,7 @@ const { requirePermission } = require('../middleware/rbac');
 
 // 목록 조회
 router.get('/', async (req, res) => {
-  const { status, search, sales_contract_id } = req.query;
+  const { status, search, sales_contract_id, amount_min, amount_max, client_id, issue_from, issue_to, due_from, due_to } = req.query;
   try {
     const where = ['1=1'];
     const params = [];
@@ -15,6 +15,13 @@ router.get('/', async (req, res) => {
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
     if (sales_contract_id) { where.push('i.sales_contract_id = ?'); params.push(sales_contract_id); }
+    if (amount_min)  { where.push('i.amount >= ?'); params.push(parseFloat(amount_min)); }
+    if (amount_max)  { where.push('i.amount <= ?'); params.push(parseFloat(amount_max)); }
+    if (client_id)   { where.push('i.client_id = ?'); params.push(client_id); }
+    if (issue_from)  { where.push('i.issue_date >= ?'); params.push(issue_from); }
+    if (issue_to)    { where.push('i.issue_date <= ?'); params.push(issue_to); }
+    if (due_from)    { where.push('i.due_date >= ?'); params.push(due_from); }
+    if (due_to)      { where.push('i.due_date <= ?'); params.push(due_to); }
 
     const [rows] = await db.query(`
       SELECT i.*, c.client_name, sc.contract_name AS sales_contract_name

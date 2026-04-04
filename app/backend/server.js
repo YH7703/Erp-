@@ -33,6 +33,7 @@ app.use('/api/clients',            authenticate, require('./routes/clients'));
 app.use('/api/quotations',         authenticate, require('./routes/quotations'));
 app.use('/api/invoices',           authenticate, require('./routes/invoices'));
 app.use('/api/attachments',        authenticate, require('./routes/attachments'));
+app.use('/api/export',             authenticate, require('./routes/export'));
 
 // 감사 로그 조회 API
 const { requireRole } = require('./middleware/rbac');
