@@ -95,7 +95,6 @@ export default function Quotations() {
 
   const validate = () => {
     const e = {};
-    if (!form.quotation_no.trim()) e.quotation_no = '견적번호를 입력하세요.';
     if (!form.title.trim())        e.title = '제목을 입력하세요.';
     if (!form.client_id)           e.client_id = '거래처를 선택하세요.';
     if (!form.salesperson_id)      e.salesperson_id = '담당 영업사원을 선택하세요.';
@@ -178,14 +177,13 @@ export default function Quotations() {
 
   const openConvert = (row) => {
     setDetail(row);
-    setConvertForm({ contract_no: '', start_date: '', end_date: '', project_type: '신규개발' });
+    setConvertForm({ start_date: '', end_date: '', project_type: '신규개발' });
     setConvertErrors({});
     setModal({ mode: 'convert', id: row.id });
   };
 
   const handleConvert = async () => {
     const e = {};
-    if (!convertForm.contract_no.trim()) e.contract_no = '계약번호를 입력하세요.';
     if (!convertForm.start_date) e.start_date = '시작일을 선택하세요.';
     if (!convertForm.end_date) e.end_date = '종료일을 선택하세요.';
     if (convertForm.start_date && convertForm.end_date && convertForm.start_date > convertForm.end_date) e.end_date = '종료일이 시작일보다 빠릅니다.';
@@ -368,9 +366,11 @@ export default function Quotations() {
       {modal && (modal.mode === 'create' || modal.mode === 'edit') && (
         <Modal title={modal.mode === 'create' ? '견적서 등록' : '견적서 수정'} onClose={() => setModal(null)} wide>
           <FormGrid>
-            <Field label="견적번호 *" error={formErrors.quotation_no}>
-              <Input className={cn(formErrors.quotation_no && 'border-red-300 bg-red-50')} value={form.quotation_no} onChange={e => setForm(f => ({ ...f, quotation_no: e.target.value }))} placeholder="QT-2026-001" />
-            </Field>
+            {modal.mode === 'edit' && (
+              <Field label="견적번호">
+                <Input value={form.quotation_no} disabled className="bg-slate-100 text-slate-500 cursor-not-allowed" />
+              </Field>
+            )}
             <Field label="제목 *" error={formErrors.title}>
               <Input className={cn(formErrors.title && 'border-red-300 bg-red-50')} value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
             </Field>
@@ -420,6 +420,13 @@ export default function Quotations() {
                 항목 추가
               </Button>
             </div>
+            <div className="flex gap-2 items-center px-3 mb-1">
+              <div className="flex-1 text-[11px] font-semibold text-slate-500">항목 설명</div>
+              <div className="w-[80px] text-[11px] font-semibold text-slate-500 text-right">개월수</div>
+              <div className="w-[140px] text-[11px] font-semibold text-slate-500 text-right">단가</div>
+              <div className="w-[120px] text-[11px] font-semibold text-slate-500 text-right">금액</div>
+              <div className="w-[28px]"></div>
+            </div>
             <div className="space-y-2">
               {form.items.map((item, idx) => {
                 const itemErr = formErrors.items?.[idx] || {};
@@ -438,7 +445,7 @@ export default function Quotations() {
                       <Input
                         type="number"
                         className="text-[13px] text-right"
-                        placeholder="수량"
+                        placeholder="개월수"
                         value={item.quantity}
                         onChange={e => updateItem(idx, 'quantity', e.target.value)}
                         min="0"
@@ -505,7 +512,7 @@ export default function Quotations() {
               <TableRow>
                 <TableHead>번호</TableHead>
                 <TableHead>항목 설명</TableHead>
-                <TableHead className="text-right">수량</TableHead>
+                <TableHead className="text-right">개월수</TableHead>
                 <TableHead className="text-right">단가</TableHead>
                 <TableHead className="text-right">금액</TableHead>
               </TableRow>
@@ -549,14 +556,12 @@ export default function Quotations() {
             견적서 "{detail?.title}"을(를) 매출계약으로 전환합니다.
           </div>
           <FormGrid>
-            <Field label="계약번호 *" error={convertErrors.contract_no}>
-              <Input className={cn(convertErrors.contract_no && 'border-red-300 bg-red-50')} value={convertForm.contract_no} onChange={e => setConvertForm(f => ({ ...f, contract_no: e.target.value }))} placeholder="SC-2026-001" />
-            </Field>
             <Field label="프로젝트 유형 *">
               <Select value={convertForm.project_type} onChange={e => setConvertForm(f => ({ ...f, project_type: e.target.value }))}>
                 {TYPE_OPT.map(t => <option key={t}>{t}</option>)}
               </Select>
             </Field>
+            <div></div>
             <Field label="시작일 *" error={convertErrors.start_date}>
               <Input type="date" className={cn(convertErrors.start_date && 'border-red-300 bg-red-50')} value={convertForm.start_date} onChange={e => setConvertForm(f => ({ ...f, start_date: e.target.value }))} />
             </Field>

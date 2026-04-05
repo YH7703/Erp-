@@ -28,7 +28,7 @@ router.get('/', async (req, res) => {
       LEFT JOIN client c ON c.id = q.client_id
       LEFT JOIN salesperson s ON s.id = q.salesperson_id
       WHERE ${where.join(' AND ')}
-      ORDER BY q.created_at DESC
+      ORDER BY q.quotation_no ASC
     `, params);
     res.json(rows);
   } catch (err) {
@@ -59,10 +59,22 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// 다음 순번 견적번호 생성
+async function generateQuotationNo() {
+  const [[{ maxNo }]] = await db.query(
+    `SELECT MAX(CAST(SUBSTRING(quotation_no, 4) AS UNSIGNED)) AS maxNo
+     FROM quotation
+     WHERE quotation_no REGEXP '^QT-[0-9]+$'`
+  );
+  const next = (maxNo || 0) + 1;
+  return `QT-${String(next).padStart(4, '0')}`;
+}
+
 // 등록
 router.post('/', async (req, res) => {
-  const { quotation_no, title, client_id, salesperson_id, status, valid_until, currency, notes, items } = req.body;
+  const { title, client_id, salesperson_id, status, valid_until, currency, notes, items } = req.body;
   try {
+    const quotation_no = await generateQuotationNo();
     const amount = (items || []).reduce((sum, it) => sum + (Number(it.quantity) || 0) * (Number(it.unit_price) || 0), 0);
 
     const [result] = await db.query(
@@ -84,17 +96,17 @@ router.post('/', async (req, res) => {
       );
     }
 
-    await req.audit('CREATE', 'quotation', quotationId, null, req.body);
-    res.status(201).json({ id: quotationId, message: '견적서가 등록되었습니다' });
+    await req.audit('CREATE', 'quotation', quotationId, null, { ...req.body, quotation_no });
+    res.status(201).json({ id: quotationId, quotation_no, message: '견적서가 등록되었습니다' });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: '이미 존재하는 견적번호입니다' });
     res.status(500).json({ error: err.message });
   }
 });
 
-// 수정
+// 수정 (견적번호는 변경 불가)
 router.put('/:id', async (req, res) => {
-  const { quotation_no, title, client_id, salesperson_id, status, valid_until, currency, notes, items } = req.body;
+  const { title, client_id, salesperson_id, status, valid_until, currency, notes, items } = req.body;
   try {
     const [before] = await db.query('SELECT * FROM quotation WHERE id = ?', [req.params.id]);
     if (!before.length) return res.status(404).json({ error: '견적서를 찾을 수 없습니다' });
@@ -103,10 +115,10 @@ router.put('/:id', async (req, res) => {
 
     await db.query(
       `UPDATE quotation
-       SET quotation_no=?, title=?, client_id=?, amount=?, currency=?, original_amount=?,
+       SET title=?, client_id=?, amount=?, currency=?, original_amount=?,
            status=?, valid_until=?, salesperson_id=?, notes=?
        WHERE id=?`,
-      [quotation_no, title, client_id, amount, currency || 'KRW', amount, status, valid_until || null, salesperson_id, notes || null, req.params.id]
+      [title, client_id, amount, currency || 'KRW', amount, status, valid_until || null, salesperson_id, notes || null, req.params.id]
     );
 
     // 항목 교체: 기존 삭제 후 재삽입
@@ -145,9 +157,9 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
-// 계약 전환
+// 계약 전환 (매출계약 번호 자동 생성)
 router.post('/:id/convert', async (req, res) => {
-  const { contract_no, start_date, end_date, project_type } = req.body;
+  const { start_date, end_date, project_type } = req.body;
   try {
     const [[quotation]] = await db.query(`
       SELECT q.*, c.name AS client_name
@@ -158,11 +170,18 @@ router.post('/:id/convert', async (req, res) => {
     if (!quotation) return res.status(404).json({ error: '견적서를 찾을 수 없습니다' });
     if (quotation.status !== '승인') return res.status(400).json({ error: '승인 상태의 견적서만 계약으로 전환할 수 있습니다' });
 
+    // 매출계약 번호 자동 생성
+    const [[{ maxNo }]] = await db.query(
+      `SELECT MAX(CAST(SUBSTRING(contract_no, 4) AS UNSIGNED)) AS maxNo
+       FROM sales_contract WHERE contract_no REGEXP '^SC-[0-9]+$'`
+    );
+    const contract_no = `SC-${String((maxNo || 0) + 1).padStart(4, '0')}`;
+
     const [contractResult] = await db.query(
       `INSERT INTO sales_contract
-        (contract_no, contract_name, client_name, amount, currency, original_amount, start_date, end_date, status, project_type, salesperson_id, notes)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [contract_no, quotation.title, quotation.client_name, quotation.amount, quotation.currency || 'KRW', quotation.original_amount || quotation.amount, start_date, end_date, '등록', project_type, quotation.salesperson_id, quotation.notes || null]
+        (contract_no, contract_name, client_id, client_name, amount, currency, original_amount, start_date, end_date, status, project_type, salesperson_id, notes)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [contract_no, quotation.title, quotation.client_id, quotation.client_name, quotation.amount, quotation.currency || 'KRW', quotation.original_amount || quotation.amount, start_date, end_date, '등록', project_type, quotation.salesperson_id, quotation.notes || null]
     );
 
     await db.query(
@@ -173,7 +192,7 @@ router.post('/:id/convert', async (req, res) => {
     await req.audit('CREATE', 'sales_contract', contractResult.insertId, null, { from_quotation: req.params.id, ...req.body });
     await req.audit('UPDATE', 'quotation', parseInt(req.params.id), quotation, { status: '계약전환', converted_contract_id: contractResult.insertId });
 
-    res.status(201).json({ id: contractResult.insertId, message: '견적서가 매출계약으로 전환되었습니다' });
+    res.status(201).json({ id: contractResult.insertId, contract_no, message: '견적서가 매출계약으로 전환되었습니다' });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: '이미 존재하는 계약번호입니다' });
     res.status(500).json({ error: err.message });

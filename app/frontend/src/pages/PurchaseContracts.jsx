@@ -58,7 +58,6 @@ export default function PurchaseContracts() {
 
   const validate = () => {
     const e = {};
-    if (!form.contract_no.trim())    e.contract_no    = '계약번호를 입력하세요.';
     if (!form.contract_name.trim())  e.contract_name  = '계약명을 입력하세요.';
     if (!form.vendor_id)              e.vendor_name    = '외주업체를 선택하세요.';
     if (!form.input_monthly_rate || Number(form.input_monthly_rate) <= 0) e.monthly_rate = '월단가를 올바르게 입력하세요.';
@@ -91,7 +90,7 @@ export default function PurchaseContracts() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => { api.getSalesContracts().then(setSalesList); }, []);
-  useEffect(() => { api.getClients().then(data => setVendors((Array.isArray(data) ? data : (data.rows || [])).filter(c => c.type === '협력사'))); }, []);
+  useEffect(() => { api.getClients().then(data => setVendors((Array.isArray(data) ? data : (data.rows || [])).filter(c => c.client_type === '협력사' || c.client_type === '고객/협력사'))); }, []);
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape' && modal) setModal(null); };
@@ -276,9 +275,11 @@ export default function PurchaseContracts() {
       {modal && (
         <Modal title={modal.mode === 'create' ? '매입계약 등록' : '매입계약 수정'} onClose={() => setModal(null)}>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="계약번호 *" error={formErrors.contract_no}>
-              <Input className={cn(formErrors.contract_no && 'border-red-300 bg-red-50')} value={form.contract_no} onChange={e => setForm(f => ({ ...f, contract_no: e.target.value }))} placeholder="PC-2025-001" />
-            </Field>
+            {modal.mode === 'edit' && (
+              <Field label="계약번호">
+                <Input value={form.contract_no} disabled className="bg-slate-100 text-slate-500 cursor-not-allowed" />
+              </Field>
+            )}
             <Field label="계약명 *" error={formErrors.contract_name}>
               <Input className={cn(formErrors.contract_name && 'border-red-300 bg-red-50')} value={form.contract_name} onChange={e => setForm(f => ({ ...f, contract_name: e.target.value }))} />
             </Field>

@@ -91,7 +91,6 @@ export default function SalesContracts() {
 
   const validate = () => {
     const e = {};
-    if (!form.contract_no.trim())    e.contract_no    = '계약번호를 입력하세요.';
     if (!form.contract_name.trim())  e.contract_name  = '계약명을 입력하세요.';
     if (!form.client_id)              e.client_name    = '고객사를 선택하세요.';
     if (!form.input_amount || Number(form.input_amount) <= 0) e.amount = '계약금액을 올바르게 입력하세요.';
@@ -320,9 +319,11 @@ export default function SalesContracts() {
       {modal && modal.mode !== 'detail' && (
         <Modal title={modal.mode === 'create' ? '매출계약 등록' : '매출계약 수정'} onClose={() => setModal(null)}>
           <FormGrid>
-            <Field label="계약번호 *" error={formErrors.contract_no}>
-              <Input className={cn(formErrors.contract_no && 'border-red-300 bg-red-50')} value={form.contract_no} onChange={e => setForm(f => ({ ...f, contract_no: e.target.value }))} placeholder="SC-2025-001" />
-            </Field>
+            {modal.mode === 'edit' && (
+              <Field label="계약번호">
+                <Input value={form.contract_no} disabled className="bg-slate-100 text-slate-500 cursor-not-allowed" />
+              </Field>
+            )}
             <Field label="계약명 *" error={formErrors.contract_name}>
               <Input className={cn(formErrors.contract_name && 'border-red-300 bg-red-50')} value={form.contract_name} onChange={e => setForm(f => ({ ...f, contract_name: e.target.value }))} />
             </Field>
@@ -331,6 +332,12 @@ export default function SalesContracts() {
                 <option value="">고객사 선택</option>
                 {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </Select>
+            </Field>
+            <Field label="시작일 *" error={formErrors.start_date}>
+              <Input type="date" className={cn(formErrors.start_date && 'border-red-300 bg-red-50')} value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
+            </Field>
+            <Field label="종료일 *" error={formErrors.end_date}>
+              <Input type="date" className={cn(formErrors.end_date && 'border-red-300 bg-red-50')} value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
             </Field>
             <Field label="계약금액 *" error={formErrors.amount}>
               <CurrencyAmountInput
@@ -341,12 +348,6 @@ export default function SalesContracts() {
                 error={!!formErrors.amount}
                 placeholder="금액 입력"
               />
-            </Field>
-            <Field label="시작일 *" error={formErrors.start_date}>
-              <Input type="date" className={cn(formErrors.start_date && 'border-red-300 bg-red-50')} value={form.start_date} onChange={e => setForm(f => ({ ...f, start_date: e.target.value }))} />
-            </Field>
-            <Field label="종료일 *" error={formErrors.end_date}>
-              <Input type="date" className={cn(formErrors.end_date && 'border-red-300 bg-red-50')} value={form.end_date} onChange={e => setForm(f => ({ ...f, end_date: e.target.value }))} />
             </Field>
             <Field label="프로젝트 유형 *">
               <Select value={form.project_type} onChange={e => setForm(f => ({ ...f, project_type: e.target.value }))}>

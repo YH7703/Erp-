@@ -3,6 +3,22 @@ const router = express.Router();
 const db = require('../db');
 // const { requirePermission } = require('../middleware/rbac'); // 인증 비활성화
 
+// DB ENUM 값을 동적으로 가져오는 헬퍼 함수
+async function getSalesContractStatusEnum() {
+  const [[col]] = await db.query(`
+    SELECT COLUMN_TYPE
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME   = 'sales_contract'
+      AND COLUMN_NAME  = 'status'
+  `);
+  if (!col) return [];
+  // COLUMN_TYPE 예시: "enum('등록','진행중','완료','취소')"
+  const match = col.COLUMN_TYPE.match(/^enum\((.+)\)$/i);
+  if (!match) return [];
+  return match[1].split(',').map(v => v.replace(/'/g, '').trim());
+}
+
 // 목록 조회
 router.get('/', async (req, res) => {
   const { status, search, salesperson_id, start_from, start_to, end_from, end_to, amount_min, amount_max, project_type, client_id } = req.query;
@@ -34,7 +50,7 @@ router.get('/', async (req, res) => {
       LEFT JOIN purchase_contract pc ON pc.sales_contract_id = sc.id
       WHERE ${where.join(' AND ')}
       GROUP BY sc.id
-      ORDER BY sc.created_at DESC
+      ORDER BY sc.contract_no ASC
     `, params);
     res.json(rows);
   } catch (err) {
@@ -67,36 +83,57 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// 다음 순번 계약번호 생성
+async function generateContractNo() {
+  const [[{ maxNo }]] = await db.query(
+    `SELECT MAX(CAST(SUBSTRING(contract_no, 4) AS UNSIGNED)) AS maxNo
+     FROM sales_contract
+     WHERE contract_no REGEXP '^SC-[0-9]+$'`
+  );
+  const next = (maxNo || 0) + 1;
+  return `SC-${String(next).padStart(4, '0')}`;
+}
+
 // 등록
 router.post('/', async (req, res) => {
-  const { contract_no, contract_name, client_id, client_name, amount, currency, original_amount, start_date, end_date, status, project_type, salesperson_id, notes } = req.body;
+  const { contract_name, client_id, client_name, amount, currency, original_amount, start_date, end_date, status, project_type, salesperson_id, notes } = req.body;
+
+  // DB ENUM에서 허용값을 동적으로 가져와 검증
+  const VALID_STATUS = await getSalesContractStatusEnum();
+  const resolvedStatus = (status && status.trim() !== '') ? status.trim() : (VALID_STATUS[0] || '등록');
+  if (VALID_STATUS.length > 0 && !VALID_STATUS.includes(resolvedStatus)) {
+    return res.status(400).json({ error: `status 값이 유효하지 않습니다. 허용값: ${VALID_STATUS.join(', ')}` });
+  }
+
   try {
+    const contract_no = await generateContractNo();
     const [result] = await db.query(
       `INSERT INTO sales_contract
         (contract_no, contract_name, client_id, client_name, amount, currency, original_amount, start_date, end_date, status, project_type, salesperson_id, notes)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-      [contract_no, contract_name, client_id || null, client_name, amount, currency || 'KRW', original_amount || amount, start_date, end_date, status || '등록', project_type, salesperson_id, notes || null]
+      [contract_no, contract_name, client_id || null, client_name, amount, currency || 'KRW', original_amount || amount, start_date, end_date, resolvedStatus, project_type, salesperson_id, notes || null]
     );
-    await req.audit('CREATE', 'sales_contract', result.insertId, null, req.body);
-    res.status(201).json({ id: result.insertId, message: '매출계약이 등록되었습니다' });
+    await req.audit('CREATE', 'sales_contract', result.insertId, null, { ...req.body, contract_no });
+    res.status(201).json({ id: result.insertId, contract_no, message: '매출계약이 등록되었습니다' });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: '이미 존재하는 계약번호입니다' });
     res.status(500).json({ error: err.message });
   }
 });
 
-// 수정
+// 수정 (계약번호는 변경 불가)
 router.put('/:id', async (req, res) => {
-  const { contract_no, contract_name, client_id, client_name, amount, currency, original_amount, start_date, end_date, status, project_type, salesperson_id, notes } = req.body;
+  const { contract_name, client_id, client_name, amount, currency, original_amount, start_date, end_date, status, project_type, salesperson_id, notes } = req.body;
   try {
     const [before] = await db.query('SELECT * FROM sales_contract WHERE id = ?', [req.params.id]);
+    if (!before.length) return res.status(404).json({ error: '계약을 찾을 수 없습니다' });
     await db.query(
       `UPDATE sales_contract
-       SET contract_no=?, contract_name=?, client_id=?, client_name=?, amount=?,
+       SET contract_name=?, client_id=?, client_name=?, amount=?,
            currency=?, original_amount=?,
            start_date=?, end_date=?, status=?, project_type=?, salesperson_id=?, notes=?
        WHERE id=?`,
-      [contract_no, contract_name, client_id || null, client_name, amount, currency || 'KRW', original_amount || amount, start_date, end_date, status, project_type, salesperson_id, notes || null, req.params.id]
+      [contract_name, client_id || null, client_name, amount, currency || 'KRW', original_amount || amount, start_date, end_date, status, project_type, salesperson_id, notes || null, req.params.id]
     );
     await req.audit('UPDATE', 'sales_contract', parseInt(req.params.id), before[0], req.body);
     res.json({ message: '매출계약이 수정되었습니다' });

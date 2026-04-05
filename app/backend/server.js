@@ -59,7 +59,7 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`✅ 서버 시작: http://localhost:${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`✅ 서버 시작: http://0.0.0.0:${PORT}`));
 
 // 기본 관리자 계정 시드
 async function seedAdmin() {

@@ -26,7 +26,7 @@ router.get('/', async (req, res) => {
       LEFT JOIN sales_contract sc ON sc.id = pc.sales_contract_id
       LEFT JOIN salesperson    s  ON s.id  = sc.salesperson_id
       WHERE ${where.join(' AND ')}
-      ORDER BY pc.created_at DESC
+      ORDER BY pc.contract_no ASC
     `, params);
     res.json(rows);
   } catch (err) {
@@ -51,38 +51,51 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// 다음 순번 계약번호 생성
+async function generateContractNo() {
+  const [[{ maxNo }]] = await db.query(
+    `SELECT MAX(CAST(SUBSTRING(contract_no, 4) AS UNSIGNED)) AS maxNo
+     FROM purchase_contract
+     WHERE contract_no REGEXP '^PC-[0-9]+$'`
+  );
+  const next = (maxNo || 0) + 1;
+  return `PC-${String(next).padStart(4, '0')}`;
+}
+
 // 등록
 router.post('/', async (req, res) => {
-  const { contract_no, contract_name, vendor_id, vendor_name, worker_name, monthly_rate, months, currency, original_monthly_rate, start_date, end_date, status, sales_contract_id, notes } = req.body;
+  const { contract_name, vendor_id, vendor_name, worker_name, monthly_rate, months, currency, original_monthly_rate, start_date, end_date, status, sales_contract_id, notes } = req.body;
   const amount = Number(monthly_rate) * Number(months);
   try {
+    const contract_no = await generateContractNo();
     const [result] = await db.query(
       `INSERT INTO purchase_contract
         (contract_no, contract_name, vendor_id, vendor_name, worker_name, monthly_rate, months, amount, currency, original_monthly_rate, start_date, end_date, status, sales_contract_id, notes)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
       [contract_no, contract_name, vendor_id || null, vendor_name, worker_name || null, monthly_rate, months, amount, currency || 'KRW', original_monthly_rate || monthly_rate, start_date, end_date, status || '등록', sales_contract_id, notes || null]
     );
-    await req.audit('CREATE', 'purchase_contract', result.insertId, null, req.body);
-    res.status(201).json({ id: result.insertId, message: '매입계약이 등록되었습니다' });
+    await req.audit('CREATE', 'purchase_contract', result.insertId, null, { ...req.body, contract_no });
+    res.status(201).json({ id: result.insertId, contract_no, message: '매입계약이 등록되었습니다' });
   } catch (err) {
     if (err.code === 'ER_DUP_ENTRY') return res.status(400).json({ error: '이미 존재하는 계약번호입니다' });
     res.status(500).json({ error: err.message });
   }
 });
 
-// 수정
+// 수정 (계약번호는 변경 불가)
 router.put('/:id', async (req, res) => {
-  const { contract_no, contract_name, vendor_id, vendor_name, worker_name, monthly_rate, months, currency, original_monthly_rate, start_date, end_date, status, sales_contract_id, notes } = req.body;
+  const { contract_name, vendor_id, vendor_name, worker_name, monthly_rate, months, currency, original_monthly_rate, start_date, end_date, status, sales_contract_id, notes } = req.body;
   const amount = Number(monthly_rate) * Number(months);
   try {
     const [before] = await db.query('SELECT * FROM purchase_contract WHERE id = ?', [req.params.id]);
+    if (!before.length) return res.status(404).json({ error: '계약을 찾을 수 없습니다' });
     await db.query(
       `UPDATE purchase_contract
-       SET contract_no=?, contract_name=?, vendor_id=?, vendor_name=?, worker_name=?,
+       SET contract_name=?, vendor_id=?, vendor_name=?, worker_name=?,
            monthly_rate=?, months=?, amount=?, currency=?, original_monthly_rate=?,
            start_date=?, end_date=?, status=?, sales_contract_id=?, notes=?
        WHERE id=?`,
-      [contract_no, contract_name, vendor_id || null, vendor_name, worker_name || null, monthly_rate, months, amount, currency || 'KRW', original_monthly_rate || monthly_rate, start_date, end_date, status, sales_contract_id, notes || null, req.params.id]
+      [contract_name, vendor_id || null, vendor_name, worker_name || null, monthly_rate, months, amount, currency || 'KRW', original_monthly_rate || monthly_rate, start_date, end_date, status, sales_contract_id, notes || null, req.params.id]
     );
     await req.audit('UPDATE', 'purchase_contract', parseInt(req.params.id), before[0], req.body);
     res.json({ message: '매입계약이 수정되었습니다' });
