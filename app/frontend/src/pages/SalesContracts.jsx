@@ -257,7 +257,7 @@ export default function SalesContracts() {
                       <TableCell>
                         <div className="flex items-center gap-1.5">
                           <button
-                            className="bg-transparent border-none text-blue-600 font-medium cursor-pointer underline underline-offset-2 text-sm"
+                            className="bg-transparent border-none text-blue-600 font-medium cursor-pointer underline underline-offset-2 text-sm hover:text-blue-800 active:text-blue-900 transition-colors duration-150 rounded px-1 -mx-1 hover:bg-blue-50"
                             onClick={() => openDetail(r.id)}
                           >
                             {r.contract_name}

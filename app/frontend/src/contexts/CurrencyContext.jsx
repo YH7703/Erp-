@@ -1,4 +1,12 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+
+const DEFAULT_RATES = {
+  KRW: 1,
+  USD: 0.00075,
+  JPY: 0.11,
+  CNY: 0.0054,
+  EUR: 0.00069,
+};
 
 const CURRENCIES = {
   KRW: { symbol: '₩', name: '원', locale: 'ko-KR', rate: 1,        short: '원',  shortB: '억',  shortM: '만' },
@@ -12,6 +20,37 @@ const CurrencyContext = createContext();
 
 export function CurrencyProvider({ children }) {
   const [currency, setCurrency] = useState('KRW');
+  const [liveRates, setLiveRates] = useState(null);
+  const [ratesLoading, setRatesLoading] = useState(true);
+  const [ratesUpdatedAt, setRatesUpdatedAt] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchRates() {
+      try {
+        const res = await fetch('https://open.er-api.com/v6/latest/KRW');
+        const data = await res.json();
+        if (!cancelled && data.result === 'success') {
+          const rates = {};
+          for (const code of Object.keys(CURRENCIES)) {
+            if (data.rates[code] !== undefined) {
+              rates[code] = data.rates[code];
+              CURRENCIES[code].rate = data.rates[code];
+            }
+          }
+          setLiveRates(rates);
+          setRatesUpdatedAt(new Date());
+        }
+      } catch {
+        // 실패 시 기본 환율 사용
+      } finally {
+        if (!cancelled) setRatesLoading(false);
+      }
+    }
+    fetchRates();
+    return () => { cancelled = true; };
+  }, []);
+
   const cur = CURRENCIES[currency];
 
   const convert = (krwAmount) => {
@@ -53,7 +92,7 @@ export function CurrencyProvider({ children }) {
   };
 
   return (
-    <CurrencyContext.Provider value={{ currency, setCurrency, currencies: CURRENCIES, fmtM, fmtFull, convert, cur }}>
+    <CurrencyContext.Provider value={{ currency, setCurrency, currencies: CURRENCIES, fmtM, fmtFull, convert, cur, liveRates, ratesLoading, ratesUpdatedAt }}>
       {children}
     </CurrencyContext.Provider>
   );

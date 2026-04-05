@@ -248,7 +248,7 @@ export default function PurchaseContracts() {
                     <TableCell className="text-right" title={fmtFull(r.monthly_rate)}>{Number(r.monthly_rate).toLocaleString()}원</TableCell>
                     <TableCell className="text-right">{r.months}개월</TableCell>
                     <TableCell className="text-right text-red-600 font-medium" title={fmtFull(r.amount)}>{fmtM(r.amount)}</TableCell>
-                    <TableCell className="text-xs text-blue-600">{r.linked_sales_name || '-'}</TableCell>
+                    <TableCell className="text-xs text-blue-600 font-medium hover:text-blue-800 transition-colors duration-150">{r.linked_sales_name || '-'}</TableCell>
                     <TableCell className="text-xs text-slate-500 whitespace-nowrap">{r.start_date?.slice(0,10)} ~ {r.end_date?.slice(0,10)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={STATUS_CLASSES[r.status]}>{r.status}</Badge>

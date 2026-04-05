@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select } from '@/components/ui/select';
-import { Search, Plus, X, Edit2, Trash2, Eye, ArrowUpDown, ChevronUp, ChevronDown, Loader2, ArrowRightLeft, PlusCircle, MinusCircle } from 'lucide-react';
+import { Search, Plus, X, Edit2, Trash2, Eye, ArrowUpDown, ChevronUp, ChevronDown, Loader2, ArrowRightLeft, PlusCircle, MinusCircle, FileDown } from 'lucide-react';
 
 const STATUS_OPT = ['작성', '제출', '승인', '거절', '계약전환'];
 const TYPE_OPT   = ['신규개발', '유지보수', '컨설팅'];
@@ -27,7 +27,7 @@ const CURRENCY_OPT = ['KRW', 'USD', 'EUR', 'JPY'];
 const STATUS_VARIANT = { 작성: 'default', 제출: 'info', 승인: 'success', 거절: 'destructive', 계약전환: 'secondary' };
 
 const EMPTY_ITEM = { description: '', quantity: 1, unit_price: '' };
-const EMPTY = { quotation_no: '', title: '', client_id: '', salesperson_id: '', status: '작성', valid_until: '', currency: 'KRW', notes: '', items: [{ ...EMPTY_ITEM }] };
+const EMPTY = { quotation_no: '', title: '', client_id: '', salesperson_id: '', status: '작성', valid_until: '', created_date: new Date().toISOString().slice(0, 10), currency: 'KRW', notes: '', items: [{ ...EMPTY_ITEM }] };
 
 const advFilters = [
   { key: 'amount_min', label: '최소 금액', type: 'number', placeholder: '0' },
@@ -121,6 +121,7 @@ export default function Quotations() {
         salesperson_id: d.salesperson_id || '',
         status: d.status,
         valid_until: d.valid_until?.slice(0, 10) || '',
+        created_date: d.created_at?.slice(0, 10) || new Date().toISOString().slice(0, 10),
         currency: d.currency || 'KRW',
         notes: d.notes || '',
         items: d.items && d.items.length > 0 ? d.items.map(it => ({ description: it.description, quantity: it.quantity, unit_price: it.unit_price })) : [{ ...EMPTY_ITEM }],
@@ -198,6 +199,25 @@ export default function Quotations() {
       navigate('/sales');
     } catch (err) { toastError(err.message); }
     finally { setSaving(false); }
+  };
+
+  // 견적서 리포트 PDF 다운로드
+  const downloadReport = async (id, quotationNo) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`/api/quotations/${id}/report`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (!res.ok) throw new Error('리포트 생성 실패');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `견적서_${quotationNo}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toastSuccess('견적서 리포트가 다운로드되었습니다.');
+    } catch (e) { toastError(e.message); }
   };
 
   // 정렬
@@ -301,7 +321,7 @@ export default function Quotations() {
                     <TableRow key={r.id}>
                       <TableCell className="text-slate-500 text-[13px]">{r.quotation_no}</TableCell>
                       <TableCell>
-                        <button className="bg-transparent border-none text-blue-600 font-medium cursor-pointer underline underline-offset-2 text-sm" onClick={() => openDetail(r.id)}>
+                        <button className="bg-transparent border-none text-blue-600 font-medium cursor-pointer underline underline-offset-2 text-sm hover:text-blue-800 active:text-blue-900 transition-colors duration-150 rounded px-1 -mx-1 hover:bg-blue-50" onClick={() => openDetail(r.id)}>
                           {r.title}
                         </button>
                       </TableCell>
@@ -321,6 +341,10 @@ export default function Quotations() {
                               전환
                             </Button>
                           )}
+                          <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50" onClick={() => downloadReport(r.id, r.quotation_no)}>
+                            <FileDown className="h-3.5 w-3.5 mr-1" />
+                            리포트
+                          </Button>
                           <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>
                             <Edit2 className="h-3.5 w-3.5 mr-1" />
                             수정
@@ -362,10 +386,8 @@ export default function Quotations() {
                 {people.map(p => <option key={p.id} value={p.id}>{p.name} ({p.department})</option>)}
               </Select>
             </Field>
-            <Field label="상태">
-              <Select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
-                {STATUS_OPT.filter(s => s !== '계약전환').map(t => <option key={t}>{t}</option>)}
-              </Select>
+            <Field label="작성일자">
+              <Input type="date" value={form.created_date} onChange={e => setForm(f => ({ ...f, created_date: e.target.value }))} />
             </Field>
             <Field label="유효기간">
               <Input type="date" value={form.valid_until} onChange={e => setForm(f => ({ ...f, valid_until: e.target.value }))} />
@@ -373,6 +395,11 @@ export default function Quotations() {
             <Field label="통화">
               <Select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
                 {CURRENCY_OPT.map(c => <option key={c}>{c}</option>)}
+              </Select>
+            </Field>
+            <Field label="상태">
+              <Select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}>
+                {STATUS_OPT.filter(s => s !== '계약전환').map(t => <option key={t}>{t}</option>)}
               </Select>
             </Field>
             <Field label="비고" full>
@@ -500,14 +527,18 @@ export default function Quotations() {
               )}
             </TableBody>
           </Table>
-          {detail.status === '승인' && (
-            <div className="flex justify-end mt-4">
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="outline" onClick={() => downloadReport(detail.id, detail.quotation_no)}>
+              <FileDown className="h-4 w-4 mr-1.5" />
+              리포트 다운로드
+            </Button>
+            {detail.status === '승인' && (
               <Button onClick={() => openConvert(detail)}>
                 <ArrowRightLeft className="h-4 w-4 mr-1.5" />
                 매출계약으로 전환
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </Modal>
       )}
 

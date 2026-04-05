@@ -180,4 +180,153 @@ router.post('/:id/convert', async (req, res) => {
   }
 });
 
+// ── 견적서 PDF 리포트 (개별) ──────────────────────────────────────
+const PDFDocument = require('pdfkit');
+const fs = require('fs');
+
+router.get('/:id/report', async (req, res) => {
+  try {
+    const [[q]] = await db.query(`
+      SELECT q.*, c.name AS client_name, c.business_no, c.address, c.ceo_name, c.phone AS client_phone,
+             s.name AS salesperson_name, s.email AS salesperson_email, s.phone AS salesperson_phone, s.department
+      FROM quotation q
+      LEFT JOIN client c ON c.id = q.client_id
+      LEFT JOIN salesperson s ON s.id = q.salesperson_id
+      WHERE q.id = ?
+    `, [req.params.id]);
+    if (!q) return res.status(404).json({ error: '견적서를 찾을 수 없습니다' });
+
+    const [items] = await db.query(
+      'SELECT * FROM quotation_item WHERE quotation_id = ? ORDER BY sort_order',
+      [req.params.id]
+    );
+
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const fontPath = 'C:/Windows/Fonts/malgun.ttf';
+    const fontBoldPath = 'C:/Windows/Fonts/malgunbd.ttf';
+    if (fs.existsSync(fontPath)) {
+      doc.registerFont('Korean', fontPath);
+      doc.registerFont('KoreanBold', fs.existsSync(fontBoldPath) ? fontBoldPath : fontPath);
+    }
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=quotation_${q.quotation_no}.pdf`);
+    doc.pipe(res);
+
+    const pageW = doc.page.width - 100;
+    const leftX = 50;
+    let y = 40;
+
+    const colL = leftX;
+    const colR = leftX + pageW / 2 + 20;
+    const totalAmount = items.reduce((sum, it) => sum + Number(it.amount || 0), 0);
+    const currSymbol = { KRW: '₩', USD: '$', EUR: '€', JPY: '¥', CNY: '¥' }[q.currency] || '';
+
+    // ── 헤더: 타이틀 ──
+    doc.font('KoreanBold').fontSize(22).fillColor('#1e3a5f').text('견 적 서', leftX, y, { align: 'center', width: pageW });
+    y += 32;
+    doc.moveTo(leftX, y).lineTo(leftX + pageW, y).lineWidth(2).strokeColor('#1e3a5f').stroke();
+    y += 12;
+
+    // ── 견적 정보 (등록 폼과 동일한 필드) ──
+    const infoLabel = (label, val, x, yy) => {
+      doc.font('KoreanBold').fontSize(8).fillColor('#666666').text(label, x, yy);
+      doc.font('Korean').fontSize(9).fillColor('#000000').text(val || '-', x + 60, yy);
+    };
+    infoLabel('견적번호', q.quotation_no, colL, y);
+    infoLabel('견적일자', new Date(q.created_at).toISOString().slice(0, 10), colR, y);
+    y += 15;
+    infoLabel('제목', q.title, colL, y);
+    infoLabel('상태', q.status, colR, y);
+    y += 15;
+    infoLabel('거래처', q.client_name, colL, y);
+    infoLabel('담당 영업사원', q.salesperson_name, colR, y);
+    y += 15;
+    infoLabel('유효기간', q.valid_until ? new Date(q.valid_until).toISOString().slice(0, 10) : '-', colL, y);
+    infoLabel('통화', `${currSymbol} ${q.currency || 'KRW'}`, colR, y);
+    y += 20;
+
+    // ── 총 금액 표시 ──
+    doc.roundedRect(colL, y, pageW, 30, 4).fill('#f0f5ff');
+    doc.font('KoreanBold').fontSize(10).fillColor('#1e3a5f');
+    doc.text('총 견적금액', colL + 12, y + 9);
+    doc.fontSize(13).fillColor('#1e3a5f');
+    doc.text(`${currSymbol}${totalAmount.toLocaleString()} ${q.currency || 'KRW'}`, colL + 12, y + 8, { align: 'right', width: pageW - 24 });
+    y += 40;
+
+    // ── 항목 테이블 ──
+    const colWidths = [28, pageW - 28 - 50 - 75 - 85, 50, 75, 85];
+    const headers = ['No', '항목 설명', '수량', '단가', '금액'];
+
+    // 헤더
+    doc.roundedRect(colL, y, pageW, 20, 2).fill('#1e3a5f');
+    doc.font('KoreanBold').fontSize(8).fillColor('#ffffff');
+    let hx = colL + 5;
+    headers.forEach((h, i) => {
+      const align = i >= 2 ? 'right' : 'left';
+      const px = i >= 2 ? hx - 5 : hx;
+      doc.text(h, px, y + 6, { width: colWidths[i], align });
+      hx += colWidths[i];
+    });
+    y += 20;
+
+    // 행
+    doc.font('Korean').fontSize(8).fillColor('#333333');
+    items.forEach((it, idx) => {
+      if (y > doc.page.height - 80) {
+        doc.addPage();
+        y = 50;
+      }
+      const bgColor = idx % 2 === 0 ? '#ffffff' : '#f8fafc';
+      doc.rect(colL, y, pageW, 18).fill(bgColor);
+      doc.fillColor('#333333');
+
+      let rx = colL + 5;
+      const vals = [
+        String(idx + 1),
+        it.description,
+        Number(it.quantity).toLocaleString(),
+        Number(it.unit_price).toLocaleString(),
+        Number(it.amount).toLocaleString(),
+      ];
+      vals.forEach((v, i) => {
+        const align = i >= 2 ? 'right' : 'left';
+        const px = i >= 2 ? rx - 5 : rx;
+        doc.text(v, px, y + 5, { width: colWidths[i], align });
+        rx += colWidths[i];
+      });
+      y += 18;
+    });
+
+    // 합계 행
+    doc.rect(colL, y, pageW, 20).fill('#e8edf5');
+    doc.font('KoreanBold').fontSize(9).fillColor('#1e3a5f');
+    doc.text('합 계', colL + 5, y + 5);
+    doc.text(`${currSymbol}${totalAmount.toLocaleString()}`, colL + 5, y + 5, { align: 'right', width: pageW - 10 });
+    y += 28;
+
+    // ── 비고 ──
+    if (q.notes) {
+      doc.font('KoreanBold').fontSize(8).fillColor('#666666').text('비고', colL, y);
+      y += 12;
+      doc.font('Korean').fontSize(8).fillColor('#333333').text(q.notes, colL, y, { width: pageW });
+      y += 20;
+    }
+
+    // ── 하단 안내문 (본문 바로 아래에 배치, 2페이지로 넘어가지 않음) ──
+    y += 10;
+    doc.moveTo(leftX, y).lineTo(leftX + pageW, y).lineWidth(0.5).strokeColor('#dde3ea').stroke();
+    y += 8;
+    doc.font('Korean').fontSize(7).fillColor('#999999');
+    doc.text('본 견적서는 전자 생성된 문서이며, 유효기간 내에 한하여 효력을 가집니다.', colL, y, { align: 'center', width: pageW });
+    y += 10;
+    doc.text(`생성일시: ${new Date().toLocaleString('ko-KR')}`, colL, y, { align: 'center', width: pageW });
+
+    doc.end();
+  } catch (err) {
+    console.error('Quotation report error:', err);
+    if (!res.headersSent) res.status(500).json({ error: '견적서 리포트 생성 실패' });
+  }
+});
+
 module.exports = router;
