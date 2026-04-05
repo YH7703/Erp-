@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { Trophy, X, Loader2, ChevronUp, ChevronDown, ArrowUpDown, Calendar, RotateCcw, Eye } from 'lucide-react';
+import { Trophy, X, Loader2, ChevronUp, ChevronDown, ArrowUpDown, Calendar, RotateCcw, Eye, ExternalLink } from 'lucide-react';
 
 const STATUS_CLASSES = {
   등록: 'bg-blue-50 text-blue-500 border-blue-200',
@@ -28,6 +28,8 @@ export default function Performance() {
   const [selected, setSelected] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [sort, setSort] = useState({ key: 'total_sales', asc: false });
+  const [salesDetail, setSalesDetail] = useState(null);
+  const [salesDetailLoading, setSalesDetailLoading] = useState(false);
 
   const load = () => {
     setLoading(true); setError('');
@@ -54,6 +56,19 @@ export default function Performance() {
       setSelected(d);
     } catch(e) { toastError(e.message); }
     finally { setDetailLoading(false); }
+  };
+
+  const openSalesDetail = async (salesContractId) => {
+    setSalesDetailLoading(true);
+    setSalesDetail(null);
+    try {
+      const data = await api.getSalesContract(salesContractId);
+      setSalesDetail(data);
+    } catch (e) {
+      toastError('매출계약 정보를 불러올 수 없습니다.');
+    } finally {
+      setSalesDetailLoading(false);
+    }
   };
 
   const toggleSort = (key) => setSort(prev => ({ key, asc: prev.key === key ? !prev.asc : true }));
@@ -232,11 +247,17 @@ export default function Performance() {
                   ) : selected.contracts.map(c => (
                     <div
                       key={c.id}
-                      className="border border-slate-200 rounded-lg p-3 mb-2 transition-shadow hover:shadow-md cursor-default"
+                      className="border border-slate-200 rounded-lg p-3 mb-2 transition-shadow hover:shadow-md"
                     >
                       <div className="flex justify-between items-start mb-1.5">
                         <div>
-                          <div className="font-medium text-[13px]">{c.contract_name}</div>
+                          <button
+                            className="font-medium text-[13px] text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-150 inline-flex items-center gap-1 text-left"
+                            onClick={() => openSalesDetail(c.id)}
+                          >
+                            {c.contract_name}
+                            <ExternalLink className="h-3 w-3" />
+                          </button>
                           <div className="text-xs text-slate-500">{c.client_name}</div>
                         </div>
                         <Badge
@@ -270,6 +291,107 @@ export default function Performance() {
           </Card>
         )}
       </div>
+
+      {(salesDetail || salesDetailLoading) && (
+        <SalesDetailModal
+          data={salesDetail}
+          loading={salesDetailLoading}
+          fmtFull={fmtFull}
+          fmtM={fmtM}
+          onClose={() => setSalesDetail(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function SalesDetailModal({ data, loading, fmtFull, fmtM, onClose }) {
+  return (
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] animate-in fade-in duration-150" onClick={onClose}>
+      <div className="bg-white rounded-xl p-7 w-[600px] max-h-[90vh] overflow-auto shadow-2xl animate-in zoom-in-95 duration-150" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-lg font-bold">매출계약 상세</h2>
+          <button className="text-slate-500 hover:text-slate-700" onClick={onClose}>
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        {loading ? <Spinner /> : data && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <InfoItem label="계약번호" value={data.contract_no} />
+              <InfoItem label="계약명" value={data.contract_name} />
+              <InfoItem label="고객사" value={data.client_name} />
+              <InfoItem label="담당 영업사원" value={data.salesperson_name || '-'} />
+              <InfoItem label="프로젝트 유형" value={data.project_type || '-'} />
+              <InfoItem label="상태">
+                <Badge variant="outline" className={cn('text-[11px] font-semibold', STATUS_CLASSES[data.status] || '')}>{data.status}</Badge>
+              </InfoItem>
+              <InfoItem label="계약금액" value={fmtFull(data.amount)} className="text-blue-600 font-bold" />
+              <InfoItem label="계약기간" value={`${data.start_date?.slice(0,10)} ~ ${data.end_date?.slice(0,10)}`} />
+            </div>
+
+            <div className="border-t pt-3">
+              <h3 className="text-sm font-semibold text-slate-700 mb-2">수익 현황</h3>
+              <div className="grid grid-cols-4 gap-3">
+                <div className="bg-blue-50 rounded-lg p-3 text-center">
+                  <div className="text-[11px] text-slate-500">총 매출</div>
+                  <div className="text-sm font-bold text-blue-600">{fmtFull(data.amount)}</div>
+                </div>
+                <div className="bg-red-50 rounded-lg p-3 text-center">
+                  <div className="text-[11px] text-slate-500">총 매입</div>
+                  <div className="text-sm font-bold text-red-600">{fmtFull(data.total_purchase)}</div>
+                </div>
+                <div className="bg-green-50 rounded-lg p-3 text-center">
+                  <div className="text-[11px] text-slate-500">순이익</div>
+                  <div className="text-sm font-bold text-green-600">{fmtFull(data.net_profit)}</div>
+                </div>
+                <div className="bg-purple-50 rounded-lg p-3 text-center">
+                  <div className="text-[11px] text-slate-500">이익률</div>
+                  <div className="text-sm font-bold text-purple-600">{data.roi}%</div>
+                </div>
+              </div>
+            </div>
+
+            {data.purchase_contracts?.length > 0 && (
+              <div className="border-t pt-3">
+                <h3 className="text-sm font-semibold text-slate-700 mb-2">연결 매입계약 ({data.purchase_contracts.length}건)</h3>
+                <div className="space-y-1.5">
+                  {data.purchase_contracts.map(pc => (
+                    <div key={pc.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2 text-sm">
+                      <div>
+                        <span className="text-slate-400 text-xs mr-2">{pc.contract_no}</span>
+                        <span className="font-medium">{pc.contract_name}</span>
+                        <span className="text-slate-400 ml-2">({pc.vendor_name})</span>
+                      </div>
+                      <span className="text-red-600 font-medium">{fmtFull(pc.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {data.notes && (
+              <div className="border-t pt-3">
+                <h3 className="text-sm font-semibold text-slate-700 mb-1">비고</h3>
+                <p className="text-sm text-slate-600 whitespace-pre-wrap">{data.notes}</p>
+              </div>
+            )}
+
+            <div className="flex justify-end mt-4">
+              <Button variant="secondary" onClick={onClose}>닫기</Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function InfoItem({ label, value, children, className }) {
+  return (
+    <div>
+      <div className="text-[11px] text-slate-500 mb-0.5">{label}</div>
+      {children || <div className={cn('text-sm font-medium text-slate-800', className)}>{value}</div>}
     </div>
   );
 }
