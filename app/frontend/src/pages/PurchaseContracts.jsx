@@ -53,8 +53,6 @@ export default function PurchaseContracts() {
   const [formErrors, setFormErrors] = useState({});
   const [sort, setSort]     = useState({ key: null, asc: true });
   const [advFilter, setAdvFilter] = useState({});
-  const [salesDetail, setSalesDetail] = useState(null);
-  const [salesDetailLoading, setSalesDetailLoading] = useState(false);
   const [purchaseDetail, setPurchaseDetail] = useState(null);
   const [purchaseDetailLoading, setPurchaseDetailLoading] = useState(false);
 
@@ -155,20 +153,6 @@ export default function PurchaseContracts() {
     }
   };
 
-  const openSalesDetail = async (salesContractId) => {
-    if (!salesContractId) return;
-    setSalesDetailLoading(true);
-    setSalesDetail(null);
-    try {
-      const data = await api.getSalesContract(salesContractId);
-      setSalesDetail(data);
-    } catch (e) {
-      toastError('매출계약 정보를 불러올 수 없습니다.');
-    } finally {
-      setSalesDetailLoading(false);
-    }
-  };
-
   const toggleSort = (key) => setSort(prev => ({ key, asc: prev.key === key ? !prev.asc : true }));
   const sorted = [...list].sort((a, b) => {
     if (!sort.key) return 0;
@@ -262,7 +246,6 @@ export default function PurchaseContracts() {
                   <SortHead k="monthly_rate" className="text-right">월단가</SortHead>
                   <TableHead className="text-right">개월</TableHead>
                   <SortHead k="amount" className="text-right">계약금액</SortHead>
-                  <TableHead>연결 매출계약</TableHead>
                   <TableHead>기간</TableHead>
                   <TableHead>상태</TableHead>
                   <TableHead>관리</TableHead>
@@ -285,17 +268,6 @@ export default function PurchaseContracts() {
                     <TableCell className="text-right" title={fmtFull(r.monthly_rate)}>{Number(r.monthly_rate).toLocaleString()}원</TableCell>
                     <TableCell className="text-right">{r.months}개월</TableCell>
                     <TableCell className="text-right text-red-600 font-medium" title={fmtFull(r.amount)}>{fmtM(r.amount)}</TableCell>
-                    <TableCell>
-                      {r.sales_contract_id ? (
-                        <button
-                          className="font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-150 inline-flex items-center gap-1"
-                          onClick={() => openSalesDetail(r.sales_contract_id)}
-                        >
-                          {r.linked_sales_name}
-                          <ExternalLink className="h-3 w-3" />
-                        </button>
-                      ) : '-'}
-                    </TableCell>
                     <TableCell className="text-xs text-slate-500 whitespace-nowrap">{r.start_date?.slice(0,10)} ~ {r.end_date?.slice(0,10)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className={STATUS_CLASSES[r.status]}>{r.status}</Badge>
@@ -321,118 +293,124 @@ export default function PurchaseContracts() {
       </Card>
 
       {(purchaseDetail || purchaseDetailLoading) && (
-        <Modal title="매입계약 상세" onClose={() => setPurchaseDetail(null)}>
+        <Modal title="매입계약 상세" onClose={() => setPurchaseDetail(null)} wide>
           {purchaseDetailLoading ? <Spinner /> : purchaseDetail && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <InfoItem label="계약번호" value={purchaseDetail.contract_no} />
-                <InfoItem label="계약명" value={purchaseDetail.contract_name} />
-                <InfoItem label="외주업체" value={purchaseDetail.vendor_name} />
-                <InfoItem label="투입인력" value={purchaseDetail.worker_name || '-'} />
-                <InfoItem label="월단가" value={`${Number(purchaseDetail.monthly_rate).toLocaleString()}원`} />
-                <InfoItem label="투입 개월수" value={`${purchaseDetail.months}개월`} />
-                <InfoItem label="계약금액" value={fmtFull(purchaseDetail.amount)} className="text-red-600 font-bold" />
-                <InfoItem label="상태">
-                  <Badge variant="outline" className={STATUS_CLASSES[purchaseDetail.status] || ''}>{purchaseDetail.status}</Badge>
-                </InfoItem>
-                <InfoItem label="계약기간" value={`${purchaseDetail.start_date?.slice(0,10)} ~ ${purchaseDetail.end_date?.slice(0,10)}`} full />
-                <InfoItem label="연결 매출계약" full>
-                  {purchaseDetail.sales_contract_id ? (
-                    <button
-                      className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors duration-150 inline-flex items-center gap-1"
-                      onClick={() => { setPurchaseDetail(null); openSalesDetail(purchaseDetail.sales_contract_id); }}
-                    >
-                      {purchaseDetail.linked_sales_name} ({purchaseDetail.client_name})
-                      <ExternalLink className="h-3 w-3" />
-                    </button>
-                  ) : <span className="text-sm text-slate-400">-</span>}
-                </InfoItem>
+            <>
+              <div className="grid grid-cols-2 gap-4 mb-5">
+                <InfoRow label="계약번호" value={purchaseDetail.contract_no} />
+                <InfoRow label="계약명" value={purchaseDetail.contract_name} />
+                <InfoRow label="외주업체" value={purchaseDetail.vendor_name} />
+                <InfoRow label="투입인력" value={purchaseDetail.worker_name || '-'} />
+                <InfoRow label="월단가" value={`${Number(purchaseDetail.monthly_rate).toLocaleString()}원`} />
+                <InfoRow label="투입 개월수" value={`${purchaseDetail.months}개월`} />
+                <InfoRow label="계약금액" value={fmtFull(purchaseDetail.amount)} color="text-red-600" />
+                <InfoRow label="상태" value={<Badge variant="outline" className={STATUS_CLASSES[purchaseDetail.status] || ''}>{purchaseDetail.status}</Badge>} />
+                <InfoRow label="계약기간" value={`${purchaseDetail.start_date?.slice(0,10)} ~ ${purchaseDetail.end_date?.slice(0,10)}`} />
+                <InfoRow label="비고" value={purchaseDetail.notes || '-'} />
               </div>
-              {purchaseDetail.notes && (
-                <div className="border-t pt-3">
-                  <h3 className="text-sm font-semibold text-slate-700 mb-1">비고</h3>
-                  <p className="text-sm text-slate-600 whitespace-pre-wrap">{purchaseDetail.notes}</p>
-                </div>
+
+              {purchaseDetail.sales_contract_id && (
+                <>
+                  <h3 className="text-sm font-semibold text-slate-600 mb-2.5">연결 매출계약</h3>
+                  {!purchaseDetail._salesDetail ? (
+                    <button
+                      className="w-full text-left border border-slate-200 rounded-lg p-3 hover:bg-blue-50 transition-colors duration-150"
+                      onClick={async () => {
+                        try {
+                          const sd = await api.getSalesContract(purchaseDetail.sales_contract_id);
+                          setPurchaseDetail(prev => ({ ...prev, _salesDetail: sd }));
+                        } catch (e) { toastError('매출계약 정보를 불러올 수 없습니다.'); }
+                      }}
+                    >
+                      <span className="font-medium text-blue-600 inline-flex items-center gap-1">
+                        {purchaseDetail.linked_sales_name} ({purchaseDetail.client_name})
+                        <ExternalLink className="h-3 w-3" />
+                      </span>
+                      <span className="text-xs text-slate-400 ml-2">클릭하여 상세 보기</span>
+                    </button>
+                  ) : (
+                    <div className="border border-slate-200 rounded-lg p-4 space-y-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[13px] font-semibold text-blue-600">{purchaseDetail._salesDetail.contract_name}</span>
+                        <button
+                          className="text-xs text-slate-400 hover:text-slate-600 transition-colors duration-150 inline-flex items-center gap-1"
+                          onClick={() => setPurchaseDetail(prev => ({ ...prev, _salesDetail: undefined }))}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                          접기
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <InfoRow label="계약번호" value={purchaseDetail._salesDetail.contract_no} />
+                        <InfoRow label="계약명" value={purchaseDetail._salesDetail.contract_name} />
+                        <InfoRow label="고객사" value={purchaseDetail._salesDetail.client_name} />
+                        <InfoRow label="담당자" value={purchaseDetail._salesDetail.salesperson_name || '-'} />
+                        <InfoRow label="매출금액" value={fmtFull(purchaseDetail._salesDetail.amount)} />
+                        <InfoRow label="기간" value={`${purchaseDetail._salesDetail.start_date?.slice(0,10)} ~ ${purchaseDetail._salesDetail.end_date?.slice(0,10)}`} />
+                        <InfoRow label="순이익" value={fmtFull(purchaseDetail._salesDetail.net_profit)} color={Number(purchaseDetail._salesDetail.net_profit) < 0 ? 'text-red-600' : 'text-green-600'} />
+                        <InfoRow label="이익률" value={`${purchaseDetail._salesDetail.roi}%`} color={purchaseDetail._salesDetail.roi < 0 ? 'text-red-600' : undefined} />
+                      </div>
+                      <div className="grid grid-cols-4 gap-3">
+                        <div className="bg-blue-50 rounded-lg p-2.5 text-center">
+                          <div className="text-[11px] text-slate-500">총 매출</div>
+                          <div className="text-sm font-bold text-blue-600">{fmtFull(purchaseDetail._salesDetail.amount)}</div>
+                        </div>
+                        <div className="bg-red-50 rounded-lg p-2.5 text-center">
+                          <div className="text-[11px] text-slate-500">총 매입</div>
+                          <div className="text-sm font-bold text-red-600">{fmtFull(purchaseDetail._salesDetail.total_purchase)}</div>
+                        </div>
+                        <div className="bg-green-50 rounded-lg p-2.5 text-center">
+                          <div className="text-[11px] text-slate-500">순이익</div>
+                          <div className="text-sm font-bold text-green-600">{fmtFull(purchaseDetail._salesDetail.net_profit)}</div>
+                        </div>
+                        <div className="bg-purple-50 rounded-lg p-2.5 text-center">
+                          <div className="text-[11px] text-slate-500">이익률</div>
+                          <div className="text-sm font-bold text-purple-600">{purchaseDetail._salesDetail.roi}%</div>
+                        </div>
+                      </div>
+                      {purchaseDetail._salesDetail.purchase_contracts?.length > 0 && (
+                        <>
+                          <h4 className="text-[13px] font-semibold text-slate-600">연결 매입계약 ({purchaseDetail._salesDetail.purchase_contracts.length}건)</h4>
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>계약명</TableHead>
+                                <TableHead>외주업체</TableHead>
+                                <TableHead>투입인력</TableHead>
+                                <TableHead className="text-right">월단가</TableHead>
+                                <TableHead>개월</TableHead>
+                                <TableHead className="text-right">금액</TableHead>
+                                <TableHead>상태</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {purchaseDetail._salesDetail.purchase_contracts.map(pc => (
+                                <TableRow key={pc.id} className={cn(pc.id === purchaseDetail.id && 'bg-blue-50')}>
+                                  <TableCell className={cn(pc.id === purchaseDetail.id && 'font-semibold text-blue-600')}>{pc.contract_name}</TableCell>
+                                  <TableCell>{pc.vendor_name}</TableCell>
+                                  <TableCell>{pc.worker_name || '-'}</TableCell>
+                                  <TableCell className="text-right">{Number(pc.monthly_rate).toLocaleString()}원</TableCell>
+                                  <TableCell className="text-right">{pc.months}개월</TableCell>
+                                  <TableCell className="text-right text-red-600">{fmtFull(pc.amount)}</TableCell>
+                                  <TableCell><Badge variant="outline" className={STATUS_CLASSES[pc.status] || ''}>{pc.status}</Badge></TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </>
               )}
-              <div className="flex justify-end gap-2 mt-4">
+
+              <div className="flex justify-end gap-2 mt-5">
                 <Button variant="secondary" onClick={() => setPurchaseDetail(null)}>닫기</Button>
                 <Button onClick={() => { setPurchaseDetail(null); openEdit(purchaseDetail); }}>
                   <Pencil className="mr-1 h-3 w-3" />수정
                 </Button>
               </div>
-            </div>
-          )}
-        </Modal>
-      )}
-
-      {(salesDetail || salesDetailLoading) && (
-        <Modal title="연결 매출계약 상세" onClose={() => setSalesDetail(null)}>
-          {salesDetailLoading ? <Spinner /> : salesDetail && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <InfoItem label="계약번호" value={salesDetail.contract_no} />
-                <InfoItem label="계약명" value={salesDetail.contract_name} />
-                <InfoItem label="고객사" value={salesDetail.client_name} />
-                <InfoItem label="담당 영업사원" value={salesDetail.salesperson_name || '-'} />
-                <InfoItem label="프로젝트 유형" value={salesDetail.project_type || '-'} />
-                <InfoItem label="상태">
-                  <Badge variant="outline" className={STATUS_CLASSES[salesDetail.status] || ''}>{salesDetail.status}</Badge>
-                </InfoItem>
-                <InfoItem label="계약금액" value={fmtFull(salesDetail.amount)} className="text-blue-600 font-bold" />
-                <InfoItem label="계약기간" value={`${salesDetail.start_date?.slice(0,10)} ~ ${salesDetail.end_date?.slice(0,10)}`} />
-              </div>
-
-              <div className="border-t pt-3">
-                <h3 className="text-sm font-semibold text-slate-700 mb-2">수익 현황</h3>
-                <div className="grid grid-cols-4 gap-3">
-                  <div className="bg-blue-50 rounded-lg p-3 text-center">
-                    <div className="text-[11px] text-slate-500">총 매출</div>
-                    <div className="text-sm font-bold text-blue-600">{fmtFull(salesDetail.amount)}</div>
-                  </div>
-                  <div className="bg-red-50 rounded-lg p-3 text-center">
-                    <div className="text-[11px] text-slate-500">총 매입</div>
-                    <div className="text-sm font-bold text-red-600">{fmtFull(salesDetail.total_purchase)}</div>
-                  </div>
-                  <div className="bg-green-50 rounded-lg p-3 text-center">
-                    <div className="text-[11px] text-slate-500">순이익</div>
-                    <div className="text-sm font-bold text-green-600">{fmtFull(salesDetail.net_profit)}</div>
-                  </div>
-                  <div className="bg-purple-50 rounded-lg p-3 text-center">
-                    <div className="text-[11px] text-slate-500">이익률</div>
-                    <div className="text-sm font-bold text-purple-600">{salesDetail.roi}%</div>
-                  </div>
-                </div>
-              </div>
-
-              {salesDetail.purchase_contracts?.length > 0 && (
-                <div className="border-t pt-3">
-                  <h3 className="text-sm font-semibold text-slate-700 mb-2">연결 매입계약 ({salesDetail.purchase_contracts.length}건)</h3>
-                  <div className="space-y-1.5">
-                    {salesDetail.purchase_contracts.map(pc => (
-                      <div key={pc.id} className="flex items-center justify-between bg-slate-50 rounded-lg px-3 py-2 text-sm">
-                        <div>
-                          <span className="text-slate-400 text-xs mr-2">{pc.contract_no}</span>
-                          <span className="font-medium">{pc.contract_name}</span>
-                          <span className="text-slate-400 ml-2">({pc.vendor_name})</span>
-                        </div>
-                        <span className="text-red-600 font-medium">{fmtFull(pc.amount)}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {salesDetail.notes && (
-                <div className="border-t pt-3">
-                  <h3 className="text-sm font-semibold text-slate-700 mb-1">비고</h3>
-                  <p className="text-sm text-slate-600 whitespace-pre-wrap">{salesDetail.notes}</p>
-                </div>
-              )}
-
-              <div className="flex justify-end mt-4">
-                <Button variant="secondary" onClick={() => setSalesDetail(null)}>닫기</Button>
-              </div>
-            </div>
+            </>
           )}
         </Modal>
       )}
@@ -547,14 +525,17 @@ function exportCSV(list) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `매입계약_${new Date().toISOString().slice(0,10)}.csv`; a.click();
 }
 
-function Modal({ title, children, onClose }) {
+function Modal({ title, children, onClose, wide }) {
   return (
     <div
       className="fixed inset-0 bg-black/40 flex items-center justify-center z-[1000] animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-xl p-7 w-[600px] max-h-[90vh] overflow-auto shadow-2xl animate-in zoom-in-95 duration-150"
+        className={cn(
+          'bg-white rounded-xl p-7 max-h-[90vh] overflow-auto shadow-2xl animate-in zoom-in-95 duration-150',
+          wide ? 'w-[800px]' : 'w-[600px]'
+        )}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
@@ -569,11 +550,11 @@ function Modal({ title, children, onClose }) {
   );
 }
 
-function InfoItem({ label, value, children, className, full }) {
+function InfoRow({ label, value, color }) {
   return (
-    <div className={full ? 'col-span-2' : ''}>
-      <div className="text-[11px] text-slate-500 mb-0.5">{label}</div>
-      {children || <div className={cn('text-sm font-medium text-slate-800', className)}>{value}</div>}
+    <div className="bg-slate-50 rounded-lg px-3.5 py-2.5">
+      <div className="text-[11px] text-slate-400 mb-0.5">{label}</div>
+      <div className={cn('font-medium', color || 'text-slate-800')}>{value}</div>
     </div>
   );
 }
